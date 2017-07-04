@@ -60,7 +60,7 @@ $apiuri_Room2 = "http://api.hipchat.com/v2/room/$Room2/history?auth_token=$APIKe
 Add-Type -AssemblyName System.speech 
 $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer 
 $speak.SelectVoice('Microsoft Paulina Desktop')
-$arrTIme = @('1','2','3')
+$arrTime = @('1','2','3')
 
 
 $start = $false
@@ -97,10 +97,10 @@ Do {
        }
        
        $godzina = $true
-       #if ($arrTIme -contains (((Get-Date -Format ss ) % 59) )){
+
        if ( (0 -eq (Get-Date -Format mm)% 15)  ){
 
-       if ($godzina){
+       if ($godzina -and ($arrTime -contains (Get-Date -Format ss)% 1 )){
             
            $godzina = $false
            $speak.Speak("Jest teraz   $((Get-Date).ToShortTimeString())")
@@ -111,10 +111,7 @@ Do {
        }
 
 
-       $old_cludo = $cludo
 
-       $old_platforma = $platforma 
-       
 
    } while($true) 
 
