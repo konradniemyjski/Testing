@@ -1,5 +1,5 @@
 ﻿
-#Powershell Snippit to recive data to HipChat Room
+#Powershell Snippit to recive data to HipChat Room read it ad add pop up
 #Variables for the json post
 
 [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
@@ -46,7 +46,7 @@ function ShowMeSome {
 
 $APIKey = ''
 
-$Room1 = '' #Case sensitive if using name!! Use ID from the room it's easier
+$Room1 = ''# room id is on web available 
 
 $Room2 = ''
 
@@ -54,6 +54,8 @@ $apiuri_Room1 = "http://api.hipchat.com/v2/room/$Room1/history?auth_token=$APIKe
 
 $apiuri_Room2 = "http://api.hipchat.com/v2/room/$Room2/history?auth_token=$APIKey”
 
+
+#add Speech assembley so it ca read messages
 
 Add-Type -AssemblyName System.speech 
 $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer 
