@@ -1,4 +1,4 @@
-#Powershell Snippit to recive data to HipChat Room
+#Powershell script to recive data to HipChat Room
 #Variables for the json post
 
 $APIKey = ''
