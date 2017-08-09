@@ -1,0 +1,63 @@
+function Test-TCPPort (
+[CmdletBinding()]
+[parameter(ValueFromPipeline =$true,ValueFromPipelineByPropertyName=$true)]
+[Alias('CN','Server','__Server','IPAddress')]
+[string[]]$computername = $env:COMPUTERNAME,
+[Int32[]]$Port = 23,
+[Int32[]]$TimeOut= 1000
+)
+{
+    $servicename = Get-Content C:\Windows\System32\drivers\etc\services
+    foreach ($computer in $computername){
+        
+        foreach($p in $Port){
+            $ServiceName = $servicename | Select-String $p
+            try{
+                $servicename = $servicename[0].ToString().Split(' ')[0]
+            } catch {
+            }
+            Write-Verbose ("Checking port {0} on {1}." -f $p, $computer  )
+
+            $tcpobject = new-Object system.Net.Sockets.TcpClient 
+            #Connect to remote machine's port               
+            $connect = $tcpobject.BeginConnect($computer,$p,$null,$null) 
+            #Configure a timeout before quitting - time in milliseconds 
+            $wait = $connect.AsyncWaitHandle.WaitOne(1000,$false) 
+            If (-Not $Wait) {
+                [psobject]@{
+                Computername = $computer
+                Port = $p
+                State = "Closed"
+                Note = "Conection timed out."
+                }
+                Write-Host
+                
+                
+                
+                 } Else {
+            $error.clear()
+            $tcpobject.EndConnect($connect) | out-Null 
+            If ($Error[0]) {
+
+                [psobject]@{
+                Computername = $computer
+                Port = $p
+                State = "Closed"
+                Note = "({0} -f $_.Exception.Message)"
+                }    
+                Write-Host
+                } Else {
+             
+                    [psobject]@{
+                    Computername = $computer
+                    Port = $p
+                    State = "Open"
+                    Note = $servicename + ' service is avalabele.'
+                    } 
+                    Write-Host
+                
+               }
+            }
+        }
+    }
+}
