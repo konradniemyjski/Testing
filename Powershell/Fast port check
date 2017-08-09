@@ -59,7 +59,7 @@ function Test-TCPPort (
                }
             }
 
-			$tcpobject.Close()
+	$tcpobject.Close()
 			
         }
     }
