@@ -1,7 +1,7 @@
 function Send-SMS (
 
     [Parameter(Mandatory=$True)]
-    [string$user = 'Login',
+    [string]$user = 'Login',
     [Parameter(Mandatory=$True)]
     [string]$password = 'Password',
     [Parameter(Mandatory=$True)]
