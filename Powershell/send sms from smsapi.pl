@@ -17,6 +17,6 @@ function Send-SMS (
     $hash = $hash.ToLower() -replace '-', ''
 
     $uri = 'https://api.smsapi.pl/sms.do?username='+ $user + '&password=' + $hash + '&from=ECO&to=' + $to + '&message='+$message + '&format=json'
-    $resultat = invokee-web $uri
+    $resultat = Invoke-WebRequest $uri
     Write-Host $resultat.StatusDescription
 }
