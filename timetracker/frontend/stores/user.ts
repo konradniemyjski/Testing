@@ -34,7 +34,9 @@ export const useUserStore = defineStore('user', {
 
 export async function login(email: string, password: string) {
   const config = useRuntimeConfig()
-  const apiBase = config.public.apiBase
+  const apiBase = process.server
+    ? config.apiBaseInternal ?? config.public.apiBase
+    : config.public.apiBase
 
   const tokenResponse = await $fetch<TokenResponse>(`${apiBase}/auth/token`, {
     method: 'POST',
@@ -59,7 +61,9 @@ export async function login(email: string, password: string) {
 
 export async function register(payload: { email: string; password: string; full_name?: string; role?: 'user' | 'admin' }) {
   const config = useRuntimeConfig()
-  const apiBase = config.public.apiBase
+  const apiBase = process.server
+    ? config.apiBaseInternal ?? config.public.apiBase
+    : config.public.apiBase
 
   await $fetch(`${apiBase}/auth/register`, {
     method: 'POST',

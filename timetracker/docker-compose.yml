@@ -41,7 +41,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NUXT_PUBLIC_API_BASE: http://backend:8000
+      NUXT_PUBLIC_API_BASE: http://localhost:8000
+      NUXT_API_BASE_INTERNAL: http://backend:8000
     depends_on:
       - backend
     restart: unless-stopped
