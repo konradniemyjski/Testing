@@ -1,1 +1,25 @@
-./timetracker/worklog-frontend-logout-register/node_modules
+# Node.js
+node_modules/
+.npm/
+timetracker/frontend/.nuxt/
+timetracker/frontend/.output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# SQLite database
+*.db
+*.sqlite3
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
