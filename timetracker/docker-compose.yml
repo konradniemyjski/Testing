@@ -4,7 +4,6 @@ version: "3.8"
 services:
   db:
     image: postgres:16-alpine
-    container_name: worklog-postgres
     environment:
       POSTGRES_DB: worklog
       POSTGRES_USER: worklog
