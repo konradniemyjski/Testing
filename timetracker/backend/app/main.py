@@ -1,0 +1,39 @@
+from __future__ import annotations
+
+import os
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# Import models to register SQLAlchemy mappings before table creation
+from . import models  # noqa: F401
+from .db import Base, engine
+from .routers import auth as auth_router
+from .routers import projects as projects_router
+from .routers import worklogs as worklogs_router
+
+app = FastAPI(title="Worklog API", version="2.0.0")
+
+allowed_origins = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[origin.strip() for origin in allowed_origins if origin],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    Base.metadata.create_all(bind=engine)
+
+
+@app.get("/health", tags=["health"])
+def read_health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+app.include_router(auth_router.router)
+app.include_router(projects_router.router)
+app.include_router(worklogs_router.router)
