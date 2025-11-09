@@ -22,9 +22,7 @@ services:
     restart: unless-stopped
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Containerfile
+    build: ./backend
     container_name: worklog-backend
     ports:
       - "8000:8000"
@@ -39,9 +37,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Containerfile
+    build: ./frontend
     container_name: worklog-frontend
     ports:
       - "3000:3000"
