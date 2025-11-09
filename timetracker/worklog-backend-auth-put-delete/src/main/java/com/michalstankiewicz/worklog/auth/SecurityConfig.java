@@ -88,40 +88,20 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOriginPatterns(List.of(
-                "http://localhost",
-                "https://localhost",
                 "http://localhost:*",
                 "https://localhost:*",
-                "http://127.0.0.1",
-                "https://127.0.0.1",
                 "http://127.0.0.1:*",
                 "https://127.0.0.1:*",
-                "http://0.0.0.0",
-                "https://0.0.0.0",
                 "http://0.0.0.0:*",
                 "https://0.0.0.0:*",
-                "http://[::1]",
-                "https://[::1]",
                 "http://[::1]:*",
                 "https://[::1]:*",
                 "http://192.168.*:*",
-                "https://192.168.*:*",
-                "http://10.*:*",
-                "https://10.*:*",
-                "http://172.16.*:*",
-                "https://172.16.*:*",
-                "http://172.17.*:*",
-                "https://172.17.*:*",
-                "http://172.18.*:*",
-                "https://172.18.*:*",
-                "http://172.19.*:*",
-                "https://172.19.*:*",
-                "http://172.2*.*:*",
-                "https://172.2*.*:*"
+                "https://192.168.*:*"
         ));
-        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
         cfg.setAllowedHeaders(List.of("*"));
-        cfg.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
+        cfg.setExposedHeaders(List.of("Authorization","Content-Disposition"));
         cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);
 
