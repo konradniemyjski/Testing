@@ -1,8 +1,10 @@
 package com.michalstankiewicz.worklog.service;
 
 import com.michalstankiewicz.worklog.dto.WorklogDto;
+import com.michalstankiewicz.worklog.model.Account;
 import com.michalstankiewicz.worklog.model.User;
 import com.michalstankiewicz.worklog.model.Worklog;
+import com.michalstankiewicz.worklog.repository.AccountRepository;
 import com.michalstankiewicz.worklog.repository.UserRepository;
 import com.michalstankiewicz.worklog.repository.WorklogRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,18 +23,22 @@ class WorklogServiceTest {
     private WorklogRepository worklogRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private AccountRepository accountRepository;
 
     @InjectMocks
     private WorklogService worklogService;
 
     private User user;
     private Worklog worklog;
+    private Account account;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         user = new User(1L, "Jan", "Kowalski", null, new ArrayList<>());
         worklog = new Worklog(1L, LocalDate.now(), user, BigDecimal.valueOf(8.5), 2, 1);
+        account = Account.builder().id(5L).username("jan").password("pwd").role("ROLE_USER").user(user).build();
     }
 
     @Test
@@ -114,5 +120,29 @@ class WorklogServiceTest {
 
         assertTrue(result);
         verify(worklogRepository).deleteById(1L);
+    }
+
+    @Test
+    void resolveUserIdByUsername_returnsIdWhenLinked() {
+        when(accountRepository.findByUsername("jan")).thenReturn(Optional.of(account));
+
+        Long resolved = worklogService.resolveUserIdByUsername("jan");
+
+        assertEquals(1L, resolved);
+    }
+
+    @Test
+    void resolveUserIdByUsername_returnsNullWhenUnknown() {
+        when(accountRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertNull(worklogService.resolveUserIdByUsername("ghost"));
+    }
+
+    @Test
+    void resolveUserIdByUsername_returnsNullWhenAccountWithoutUser() {
+        Account orphan = Account.builder().id(6L).username("orphan").password("pwd").role("ROLE_USER").build();
+        when(accountRepository.findByUsername("orphan")).thenReturn(Optional.of(orphan));
+
+        assertNull(worklogService.resolveUserIdByUsername("orphan"));
     }
 }
