@@ -14,10 +14,23 @@ from .routers import worklogs as worklogs_router
 
 app = FastAPI(title="Worklog API", version="2.0.0")
 
-allowed_origins = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
+default_allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS")
+allowed_origins = (
+    allowed_origins_env.split(",") if allowed_origins_env else default_allowed_origins
+)
+allow_origin_regex = os.getenv(
+    "CORS_ALLOW_ORIGIN_REGEX", r"https?://(localhost|127\.0\.0\.1)(:\\d+)?$"
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in allowed_origins if origin],
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
