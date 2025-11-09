@@ -30,7 +30,7 @@ async def list_projects(
 async def create_project(
     project_in: schemas.ProjectCreate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[models.User, Depends(auth.get_current_active_admin)],
+    _: Annotated[models.User, Depends(auth.get_current_active_user)],
 ):
     existing = db.query(models.Project).filter(models.Project.name == project_in.name).first()
     if existing:

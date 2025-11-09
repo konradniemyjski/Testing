@@ -46,8 +46,8 @@
         <div>
           <header style="display: flex; justify-content: space-between; align-items: center;">
             <h2>Recent work logs</h2>
-            <div v-if="userStore.profile?.role === 'admin'">
-              <button class="primary-btn" type="button" @click="showProjectModal = true">New project</button>
+            <div>
+              <button class="primary-btn" type="button" @click="goToProjects">Manage projects</button>
             </div>
           </header>
 
@@ -80,28 +80,11 @@
       </section>
     </div>
 
-    <dialog ref="projectDialog" @close="showProjectModal = false">
-      <form class="card" method="dialog" @submit.prevent="createProject">
-        <h2>Create project</h2>
-        <div class="form-group">
-          <label for="projectName">Name</label>
-          <input id="projectName" v-model="projectForm.name" type="text" required />
-        </div>
-        <div class="form-group">
-          <label for="projectDesc">Description</label>
-          <textarea id="projectDesc" v-model="projectForm.description" rows="3" />
-        </div>
-        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-          <button type="button" class="primary-btn" style="background: #e11d48;" @click="closeProjectModal">Cancel</button>
-          <button type="submit" class="primary-btn">Create</button>
-        </div>
-      </form>
-    </dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useUserStore } from '~/stores/user'
 
@@ -126,25 +109,11 @@ const api = useApi()
 const projects = ref<Project[]>([])
 const worklogs = ref<WorkLog[]>([])
 const saving = ref(false)
-const showProjectModal = ref(false)
-const projectDialog = ref<HTMLDialogElement | null>(null)
-
-watch(showProjectModal, (open) => {
-  if (!projectDialog.value) return
-  if (open) projectDialog.value.showModal()
-  else projectDialog.value.close()
-})
-
 const form = reactive({
   project_id: null as number | null,
   date: new Date().toISOString().slice(0, 10),
   hours: 8,
   notes: ''
-})
-
-const projectForm = reactive({
-  name: '',
-  description: ''
 })
 
 function findProject(id: number) {
@@ -186,25 +155,13 @@ async function handleDelete(id: number) {
   await loadWorklogs()
 }
 
-function closeProjectModal() {
-  showProjectModal.value = false
-}
-
-async function createProject() {
-  if (!projectForm.name.trim()) return
-  await api<Project>('/projects/', {
-    method: 'POST',
-    body: { ...projectForm }
-  })
-  projectForm.name = ''
-  projectForm.description = ''
-  showProjectModal.value = false
-  await loadProjects()
-}
-
 async function handleLogout() {
   userStore.clear()
   router.replace('/login')
+}
+
+function goToProjects() {
+  router.push('/projects')
 }
 
 onMounted(async () => {
