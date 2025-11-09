@@ -3,6 +3,10 @@ uvicorn[standard]==0.30.1
 SQLAlchemy==2.0.30
 pydantic[email]==2.7.1
 passlib[bcrypt]==1.7.4
+# Passlib 1.7.4 is not yet fully compatible with bcrypt>=4, which causes
+# runtime errors when hashing passwords. Pin bcrypt below version 4 until the
+# upstream packages resolve the incompatibility.
+bcrypt<4
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.9
 psycopg[binary]==3.1.18
