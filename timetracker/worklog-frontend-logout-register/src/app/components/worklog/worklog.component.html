@@ -1,0 +1,64 @@
+<h2>Wpis godzinowy</h2>
+
+<!-- Add Form -->
+<div *ngIf="!isEditing">
+  <h3>Nowy wpis godzinowy</h3>
+  <label>Data: <input type="date" [(ngModel)]="addFormModel.workDate"></label>
+  <label>Pracownik:
+    <select [(ngModel)]="addFormModel.userId">
+      <option value="0" disabled>Wybierz pracownika</option>
+      <option *ngFor="let user of users" [value]="user.id">{{ user.name }} {{ user.surname }}</option>
+    </select>
+  </label>
+  <label>Czas pracy (godziny): <input type="number" step="0.25" min="0" [(ngModel)]="addFormModel.timeSpent"></label>
+  <label>Zamówione posiłki: <input type="number" min="0" [(ngModel)]="addFormModel.mealsOrdered"></label>
+  <label>Ilość noclegów: <input type="number" min="0" [(ngModel)]="addFormModel.nightsSpent"></label>
+  <button (click)="addWorklog()">Dodaj wpis</button>
+</div>
+
+<!-- Edit Form -->
+<div *ngIf="isEditing">
+  <h3>Edytuj wpis</h3>
+  <label>Data: <input type="date" [(ngModel)]="editFormModel.workDate"></label>
+  <label>Pracownik:
+    <select [(ngModel)]="editFormModel.userId">
+      <option value="0" disabled>Wybierz pracownika</option>
+      <option *ngFor="let user of users" [value]="user.id">{{ user.name }} {{ user.surname }}</option>
+    </select>
+  </label>
+  <label>Czas pracy (godziny): <input type="number" step="0.25" min="0" [(ngModel)]="editFormModel.timeSpent"></label>
+  <label>Zamówione posiłki: <input type="number" min="0" [(ngModel)]="editFormModel.mealsOrdered"></label>
+  <label>Ilość noclegów: <input type="number" min="0" [(ngModel)]="editFormModel.nightsSpent"></label>
+  <button (click)="updateWorklog()">Aktualizuj</button>
+  <button (click)="cancelEdit()">Anuluj</button>
+</div>
+
+<!-- Worklog List -->
+<h3>List czasów pracy</h3>
+<button (click)="downloadXls()">Download XLS</button> <!-- Download Button -->
+<table>
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Pracownik</th>
+      <th>Przepracownane</th>
+      <th>Posiłki</th>
+      <th>Noce</th>
+      <th>Opcje</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let worklog of worklogs">
+      <td>{{ worklog.workDate | date:"yyyy-MM-dd" }}</td>
+      <td>{{ worklog.userName }} {{ worklog.userSurname }}</td>
+      <td>{{ worklog.timeSpent }}</td>
+      <td>{{ worklog.mealsOrdered }}</td>
+      <td>{{ worklog.nightsSpent }}</td>
+      <td>
+        <button (click)="editWorklog(worklog)">Edytuj</button>
+        <button (click)="deleteWorklog(worklog.id)">Usuń</button>
+      </td>
+    </tr>
+  </tbody>
+</table>
+

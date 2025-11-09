@@ -1,0 +1,51 @@
+<h2>Pracownicy</h2>
+
+<!-- Add Form -->
+<div *ngIf="!isEditing">
+  <h3>Dodaj nowego pracownika</h3>
+  <input type="text" [(ngModel)]="addFormModel.name" placeholder="Imię">
+  <input type="text" [(ngModel)]="addFormModel.surname" placeholder="Nazwisko">
+  <select [(ngModel)]="addFormModel.teamId">
+    <option value="0" disabled>Wybierz brygadę</option>
+    <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+  </select>
+  <button (click)="addUser()">Dodaj</button>
+</div>
+
+<!-- Edit Form -->
+<div *ngIf="isEditing">
+  <h3>Edytuj pracownika</h3>
+  <input type="text" [(ngModel)]="editFormModel.name" placeholder="Imię">
+  <input type="text" [(ngModel)]="editFormModel.surname" placeholder="Nazwisko">
+  <select [(ngModel)]="editFormModel.teamId">
+    <option value="0" disabled>Wybierz brygadę</option>
+    <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+  </select>
+  <button (click)="updateUser()">Aktualizuj</button>
+  <button (click)="cancelEdit()">Anuluj</button>
+</div>
+
+<!-- User List -->
+<h3>List pracowników</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Imię</th>
+      <th>Nazwisko</th>
+      <th>Brygada</th>
+      <th>Opcje</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let user of users">
+      <td>{{ user.name }}</td>
+      <td>{{ user.surname }}</td>
+      <td>{{ user.teamName }}</td> <!-- Display team name -->
+      <td>
+        <button (click)="editUser(user)">Edytuj</button>
+        <button (click)="deleteUser(user.id)">Usuń</button>
+      </td>
+    </tr>
+  </tbody>
+</table>
+

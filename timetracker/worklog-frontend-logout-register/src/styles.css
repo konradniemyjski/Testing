@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Twoje globalne style */
+html, body { margin: 0; font-family: system-ui, Arial, sans-serif; }
+.topbar { display:flex; gap:12px; padding:10px; border-bottom:1px solid #eee; }
+a.active { text-decoration: underline; }

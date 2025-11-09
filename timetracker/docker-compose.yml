@@ -1,0 +1,62 @@
+
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: worklog-postgres
+    environment:
+      POSTGRES_DB: worklog
+      POSTGRES_USER: worklog
+      POSTGRES_PASSWORD: worklogpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build: ./worklog-backend-auth-put-delete
+    container_name: worklog-backend
+    ports:
+      - "8080:8080"
+    environment:
+      # Spring Datasource (PostgreSQL)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/worklog
+      SPRING_DATASOURCE_USERNAME: worklog
+      SPRING_DATASOURCE_PASSWORD: worklogpass
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+
+      # JPA / Hibernate
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "false"
+
+      # JWT (zmień sekret w produkcji!)
+      SECURITY_JWT_SECRET: super-secret-change-this-please-12345678901234567890
+      SECURITY_JWT_EXPIRATION_MS: "86400000"
+
+      # (opcjonalnie) jeśli wcześniej używałeś init skryptów Springa
+      SPRING_SQL_INIT_MODE: never
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./worklog-frontend-logout-register
+    container_name: worklog-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local
