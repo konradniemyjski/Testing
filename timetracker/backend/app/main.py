@@ -24,9 +24,8 @@ allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS")
 allowed_origins = (
     allowed_origins_env.split(",") if allowed_origins_env else default_allowed_origins
 )
-# Allow any localhost or loopback origin (with optional port) by default.
 allow_origin_regex = os.getenv(
-    "CORS_ALLOW_ORIGIN_REGEX", r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+    "CORS_ALLOW_ORIGIN_REGEX", r"https?://(localhost|127\.0\.0\.1)(:\\d+)?$"
 )
 app.add_middleware(
     CORSMiddleware,
