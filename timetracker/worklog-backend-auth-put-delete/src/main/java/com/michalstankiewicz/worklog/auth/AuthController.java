@@ -2,7 +2,9 @@
 package com.michalstankiewicz.worklog.auth;
 
 import com.michalstankiewicz.worklog.model.Account;
+import com.michalstankiewicz.worklog.model.User;
 import com.michalstankiewicz.worklog.repository.AccountRepository;
+import com.michalstankiewicz.worklog.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,12 +24,14 @@ public class AuthController {
     private final JwtService jwt;
     private final AccountRepository accounts;
     private final PasswordEncoder encoder;
+    private final UserRepository users;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtService jwt, AccountRepository accounts, PasswordEncoder encoder) {
+    public AuthController(AuthenticationManager authenticationManager, JwtService jwt, AccountRepository accounts, PasswordEncoder encoder, UserRepository users) {
         this.authenticationManager = authenticationManager;
         this.jwt = jwt;
         this.accounts = accounts;
         this.encoder = encoder;
+        this.users = users;
     }
 
     @PostMapping("/login")
@@ -46,10 +50,34 @@ public class AuthController {
         String username = payload.get("username");
         String password = payload.get("password");
         String role = payload.getOrDefault("role", "ROLE_USER");
+        String userIdRaw = payload.get("userId");
+
         if (accounts.existsByUsername(username)) {
             return ResponseEntity.badRequest().body(Map.of("error","username_taken"));
         }
-        accounts.save(Account.builder().username(username).password(encoder.encode(password)).role(role).build());
+
+        User user = null;
+        if (userIdRaw != null && !userIdRaw.isBlank()) {
+            try {
+                Long userId = Long.valueOf(userIdRaw);
+                if (accounts.findByUser_Id(userId).isPresent()) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "user_already_linked"));
+                }
+                user = users.findById(userId)
+                        .orElseThrow(() -> new IllegalArgumentException("Invalid user ID: " + userId));
+            } catch (NumberFormatException ex) {
+                return ResponseEntity.badRequest().body(Map.of("error", "invalid_user_id"));
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body(Map.of("error", "user_not_found"));
+            }
+        }
+
+        accounts.save(Account.builder()
+                .username(username)
+                .password(encoder.encode(password))
+                .role(role)
+                .user(user)
+                .build());
         return ResponseEntity.ok(Map.of("status","ok"));
     }
 }
