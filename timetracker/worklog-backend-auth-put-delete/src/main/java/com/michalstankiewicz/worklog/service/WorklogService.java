@@ -1,13 +1,12 @@
 package com.michalstankiewicz.worklog.service;
 
 import com.michalstankiewicz.worklog.dto.WorklogDto;
+import com.michalstankiewicz.worklog.model.Account;
 import com.michalstankiewicz.worklog.model.User;
 import com.michalstankiewicz.worklog.model.Worklog;
+import com.michalstankiewicz.worklog.repository.AccountRepository;
 import com.michalstankiewicz.worklog.repository.UserRepository;
 import com.michalstankiewicz.worklog.repository.WorklogRepository;
-// TODO: jak tylko pokażesz Account i AccountRepository, to to odkomentujemy:
-// import com.michalstankiewicz.worklog.model.Account;
-// import com.michalstankiewicz.worklog.repository.AccountRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,16 +19,16 @@ public class WorklogService {
 
     private final WorklogRepository worklogRepository;
     private final UserRepository userRepository;
-    // private final AccountRepository accountRepository;
+    private final AccountRepository accountRepository;
 
     public WorklogService(
             WorklogRepository worklogRepository,
-            UserRepository userRepository
-            // , AccountRepository accountRepository
+            UserRepository userRepository,
+            AccountRepository accountRepository
     ) {
         this.worklogRepository = worklogRepository;
         this.userRepository = userRepository;
-        // this.accountRepository = accountRepository;
+        this.accountRepository = accountRepository;
     }
 
     /* ============================================================
@@ -42,17 +41,16 @@ public class WorklogService {
      * Na razie zwraca null -> wtedy zwykły user dostaje 403 zamiast cudzych danych.
      * Jak tylko pokażesz mi encje Account i User, uzupełnimy to.
      */
+    @Transactional(readOnly = true)
     public Long resolveUserIdByUsername(String username) {
-        // PRZYKŁAD docelowy:
-        //
-        // return accountRepository.findByUsername(username)
-        //     .map(acc -> {
-        //         User u = acc.getUser(); // jeśli Account ma pole user
-        //         return (u != null ? u.getId() : null);
-        //     })
-        //     .orElse(null);
-        //
-        return null;
+        if (username == null || username.isBlank()) {
+            return null;
+        }
+
+        return accountRepository.findByUsername(username)
+                .map(Account::getUser)
+                .map(User::getId)
+                .orElse(null);
     }
 
     /**
