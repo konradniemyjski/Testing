@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <MainNavigation @logout="handleLogout" />
+    <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
         <div>
@@ -170,6 +170,8 @@ const editForm = reactive({
   full_name: ''
 })
 const userToDelete = ref<User | null>(null)
+
+const canManageUsers = computed(() => userStore.profile?.role === 'admin')
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('pl-PL')

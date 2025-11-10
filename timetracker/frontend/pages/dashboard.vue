@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <MainNavigation @logout="handleLogout" />
+    <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
         <div>

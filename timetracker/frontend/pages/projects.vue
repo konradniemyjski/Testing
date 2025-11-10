@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <MainNavigation @logout="handleLogout" />
+    <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
         <div>
@@ -188,6 +188,8 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const editErrorMessage = ref('')
 const deleteErrorMessage = ref('')
+
+const canManageUsers = computed(() => userStore.profile?.role === 'admin')
 
 // Edit modal state
 const showEditModal = ref(false)
