@@ -41,6 +41,11 @@ class UserRoleUpdate(BaseModel):
     role: str = Field(pattern=r"^(user|admin)$")
 
 
+class UserUpdate(BaseModel):
+    email: Optional[LoginIdentifier] = None
+    full_name: Optional[str | None] = Field(default=None, max_length=255)
+
+
 class ProjectBase(BaseModel):
     code: str = Field(min_length=1, max_length=50)
     name: str = Field(min_length=1, max_length=255)

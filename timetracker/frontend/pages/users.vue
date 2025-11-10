@@ -29,6 +29,7 @@
               <th>Rola</th>
               <th>Utworzono</th>
               <th>Ostatnia aktualizacja</th>
+              <th>Akcje</th>
             </tr>
           </thead>
           <tbody>
@@ -47,6 +48,26 @@
               </td>
               <td>{{ formatDate(user.created_at) }}</td>
               <td>{{ formatDate(user.updated_at) }}</td>
+              <td>
+                <div class="actions">
+                  <button
+                    class="action-btn action-btn--edit"
+                    type="button"
+                    @click="openEditModal(user)"
+                    title="Edytuj użytkownika"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    class="action-btn action-btn--delete"
+                    type="button"
+                    @click="openDeleteModal(user)"
+                    title="Usuń użytkownika"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -56,10 +77,67 @@
       </section>
     </div>
   </div>
+
+  <!-- Edit user modal -->
+  <div v-if="showEditModal" class="modal" @click="closeEditModal">
+    <div class="modal-content" @click.stop>
+      <h2>Edytuj użytkownika</h2>
+      <form @submit.prevent="updateUser" style="margin-top: 1.5rem; display: grid; gap: 1rem;">
+        <div class="form-group">
+          <label for="editUserEmail">Login</label>
+          <input
+            id="editUserEmail"
+            v-model="editForm.email"
+            type="email"
+            required
+            placeholder="np. jan.kowalski@example.com"
+          />
+        </div>
+        <div class="form-group">
+          <label for="editUserFullName">Imię i nazwisko</label>
+          <input
+            id="editUserFullName"
+            v-model="editForm.full_name"
+            type="text"
+            placeholder="Opcjonalne"
+          />
+        </div>
+        <p v-if="editErrorMessage" class="text-muted" style="color: #ef4444;">{{ editErrorMessage }}</p>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+          <button class="secondary-btn" type="button" @click="closeEditModal">Anuluj</button>
+          <button class="primary-btn" type="submit" :disabled="savingEdit">
+            {{ savingEdit ? 'Zapisywanie…' : 'Zapisz' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete confirmation modal -->
+  <div v-if="showDeleteModal" class="modal" @click="closeDeleteModal">
+    <div class="modal-content" @click.stop>
+      <h2>Usuń użytkownika</h2>
+      <p v-if="userToDelete" style="margin: 1.5rem 0;">
+        Czy na pewno chcesz usunąć konto <strong>{{ userToDelete.email }}</strong>?
+      </p>
+      <p class="text-muted" style="color: #ef4444; margin-bottom: 1rem;">
+        Ta operacja jest nieodwracalna.
+      </p>
+      <p v-if="deleteErrorMessage" class="text-muted" style="color: #ef4444; margin-bottom: 1rem;">
+        {{ deleteErrorMessage }}
+      </p>
+      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button class="secondary-btn" type="button" @click="closeDeleteModal">Anuluj</button>
+        <button class="danger-btn" type="button" @click="confirmDelete" :disabled="deletingUser">
+          {{ deletingUser ? 'Usuwanie…' : 'Usuń' }}
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useUserStore } from '~/stores/user'
 
@@ -83,6 +161,18 @@ const loading = ref(false)
 const updatingUserId = ref<number | null>(null)
 const errorMessage = ref('')
 const successMessage = ref('')
+const showEditModal = ref(false)
+const editErrorMessage = ref('')
+const savingEdit = ref(false)
+const showDeleteModal = ref(false)
+const deleteErrorMessage = ref('')
+const deletingUser = ref(false)
+const editForm = reactive({
+  id: 0,
+  email: '',
+  full_name: ''
+})
+const userToDelete = ref<User | null>(null)
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('pl-PL')
@@ -150,6 +240,103 @@ function goToDashboard() {
   router.push('/dashboard')
 }
 
+function openEditModal(user: User) {
+  editForm.id = user.id
+  editForm.email = user.email
+  editForm.full_name = user.full_name ?? ''
+  editErrorMessage.value = ''
+  showEditModal.value = true
+}
+
+function closeEditModal() {
+  showEditModal.value = false
+  editErrorMessage.value = ''
+}
+
+async function updateUser() {
+  const trimmedEmail = editForm.email.trim()
+  if (!trimmedEmail) {
+    editErrorMessage.value = 'Login jest wymagany.'
+    return
+  }
+
+  savingEdit.value = true
+  editErrorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    const payload = {
+      email: trimmedEmail,
+      full_name: editForm.full_name.trim() ? editForm.full_name.trim() : null
+    }
+
+    const updatedUser = await api<User>(`/users/${editForm.id}`, {
+      method: 'PUT',
+      body: payload
+    })
+
+    users.value = users.value.map((user) => (user.id === updatedUser.id ? updatedUser : user))
+
+    if (userStore.profile?.id === updatedUser.id) {
+      userStore.setCredentials(userStore.accessToken, {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        full_name: updatedUser.full_name,
+        role: updatedUser.role
+      })
+    }
+
+    successMessage.value = 'Dane użytkownika zostały zaktualizowane.'
+    closeEditModal()
+  } catch (error: any) {
+    if (error?.statusCode === 400 && error?.data?.detail) {
+      editErrorMessage.value = error.data.detail
+    } else {
+      editErrorMessage.value = 'Nie udało się zaktualizować użytkownika.'
+    }
+  } finally {
+    savingEdit.value = false
+  }
+}
+
+function openDeleteModal(user: User) {
+  userToDelete.value = user
+  deleteErrorMessage.value = ''
+  showDeleteModal.value = true
+}
+
+function closeDeleteModal() {
+  userToDelete.value = null
+  deleteErrorMessage.value = ''
+  showDeleteModal.value = false
+}
+
+async function confirmDelete() {
+  if (!userToDelete.value) return
+
+  deletingUser.value = true
+  deleteErrorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    await api(`/users/${userToDelete.value.id}`, {
+      method: 'DELETE'
+    })
+
+    users.value = users.value.filter((user) => user.id !== userToDelete.value!.id)
+    successMessage.value = 'Użytkownik został usunięty.'
+    closeDeleteModal()
+  } catch (error: any) {
+    if (error?.statusCode === 400 && error?.data?.detail) {
+      deleteErrorMessage.value = error.data.detail
+    } else {
+      deleteErrorMessage.value = 'Nie udało się usunąć użytkownika.'
+    }
+  } finally {
+    deletingUser.value = false
+  }
+}
+
 onMounted(async () => {
   userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
@@ -165,3 +352,114 @@ onMounted(async () => {
   await loadUsers()
 })
 </script>
+
+<style scoped>
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.action-btn--edit {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+
+.action-btn--edit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
+}
+
+.action-btn--delete {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+}
+
+.action-btn--delete:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.35);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.secondary-btn,
+.danger-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 999px;
+  color: #ffffff;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.secondary-btn {
+  background: #6b7280;
+}
+
+.secondary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(107, 114, 128, 0.35);
+}
+
+.danger-btn {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+}
+
+.danger-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(239, 68, 68, 0.4);
+}
+
+.danger-btn:disabled,
+.secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 1.5rem;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 2rem;
+  width: min(480px, 100%);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
+}
+
+.modal-content h2 {
+  margin-top: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .modal-content {
+    background: rgba(15, 23, 42, 0.95);
+    color: #f8fafc;
+  }
+}
+</style>

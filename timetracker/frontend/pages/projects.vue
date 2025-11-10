@@ -387,34 +387,36 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.btn-edit {
-  padding: 0.25rem 0.5rem;
-  background-color: #3b82f6;
-  color: white;
+.btn-edit,
+.btn-delete {
+  width: 2.5rem;
+  height: 2.5rem;
   border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.2s;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-edit {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
 }
 
 .btn-edit:hover {
-  background-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
 }
 
 .btn-delete {
-  padding: 0.25rem 0.5rem;
-  background-color: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.2s;
+  background: linear-gradient(135deg, #ef4444, #f97316);
 }
 
 .btn-delete:hover {
-  background-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.35);
 }
 
 .secondary-btn {
@@ -422,37 +424,41 @@ onMounted(async () => {
   background-color: #6b7280;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   cursor: pointer;
   font-size: 1rem;
-  transition: background-color 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .secondary-btn:hover {
-  background-color: #4b5563;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(107, 114, 128, 0.35);
 }
 
 .danger-btn {
   padding: 0.5rem 1rem;
-  background-color: #ef4444;
+  background: linear-gradient(135deg, #ef4444, #f97316);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   cursor: pointer;
   font-size: 1rem;
-  transition: background-color 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .danger-btn:hover {
-  background-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(239, 68, 68, 0.4);
 }
 
 .danger-btn:disabled,
 .secondary-btn:disabled,
 .btn-edit:disabled,
 .btn-delete:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 /* Modal styles */
