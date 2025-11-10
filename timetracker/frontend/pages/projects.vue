@@ -387,48 +387,36 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
 .btn-edit,
 .btn-delete {
   width: 2.5rem;
   height: 2.5rem;
+  border: none;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 1.1rem;
-  border: 1px solid transparent;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+  color: #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-edit {
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.35);
-  color: #1d4ed8;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
 }
 
 .btn-edit:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-  color: #ffffff;
-  box-shadow: 0 12px 28px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
 }
 
 .btn-delete {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.35);
-  color: #dc2626;
+  background: linear-gradient(135deg, #ef4444, #f97316);
 }
 
 .btn-delete:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, #ef4444, #f97316);
-  color: #ffffff;
-  box-shadow: 0 12px 28px rgba(239, 68, 68, 0.35);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.35);
 }
 
 .secondary-btn {

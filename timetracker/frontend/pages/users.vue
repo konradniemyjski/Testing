@@ -362,39 +362,32 @@ onMounted(async () => {
 .action-btn {
   width: 2.5rem;
   height: 2.5rem;
-  border: 1px solid transparent;
+  border: none;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 1.1rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+  color: #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .action-btn--edit {
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.35);
-  color: #1d4ed8;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
 }
 
 .action-btn--edit:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-  color: #ffffff;
-  box-shadow: 0 12px 28px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
 }
 
 .action-btn--delete {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.35);
-  color: #dc2626;
+  background: linear-gradient(135deg, #ef4444, #f97316);
 }
 
 .action-btn--delete:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, #ef4444, #f97316);
-  color: #ffffff;
-  box-shadow: 0 12px 28px rgba(239, 68, 68, 0.35);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.35);
 }
 
 .action-btn:disabled {
@@ -452,70 +445,21 @@ onMounted(async () => {
 }
 
 .modal-content {
-  background: rgba(255, 255, 255, 0.98);
+  background: #ffffff;
   border-radius: 20px;
   padding: 2rem;
   width: min(480px, 100%);
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.15);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  backdrop-filter: blur(18px);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
 }
 
 .modal-content h2 {
   margin-top: 0;
-  color: #1f2937;
-}
-
-.modal-content .form-group label {
-  color: #1f2937;
-}
-
-.modal-content .form-group input {
-  background: #f9fafb;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  color: #0f172a;
-}
-
-.modal-content .form-group input::placeholder {
-  color: rgba(100, 116, 139, 0.8);
 }
 
 @media (prefers-color-scheme: dark) {
-  .action-btn--edit {
-    background: rgba(37, 99, 235, 0.18);
-    border-color: rgba(96, 165, 250, 0.45);
-    color: #93c5fd;
-  }
-
-  .action-btn--delete {
-    background: rgba(239, 68, 68, 0.18);
-    border-color: rgba(252, 165, 165, 0.4);
-    color: #fca5a5;
-  }
-
   .modal-content {
-    background: rgba(15, 23, 42, 0.92);
+    background: rgba(15, 23, 42, 0.95);
     color: #f8fafc;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    box-shadow: 0 28px 60px rgba(2, 6, 23, 0.55);
-  }
-
-  .modal-content h2 {
-    color: #e0e7ff;
-  }
-
-  .modal-content .form-group label {
-    color: #cbd5f5;
-  }
-
-  .modal-content .form-group input {
-    background: rgba(30, 41, 59, 0.85);
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    color: #f8fafc;
-  }
-
-  .modal-content .form-group input::placeholder {
-    color: rgba(148, 163, 184, 0.8);
   }
 }
 </style>
