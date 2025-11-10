@@ -111,6 +111,14 @@
                 {{ exporting ? 'Przygotowywanie…' : 'Eksportuj do XLSX' }}
               </button>
               <button class="primary-btn" type="button" @click="goToProjects">Zarządzaj budowami</button>
+              <button
+                v-if="canManageUsers"
+                class="primary-btn"
+                type="button"
+                @click="goToUsers"
+              >
+                Użytkownicy
+              </button>
             </div>
           </header>
 
@@ -212,6 +220,8 @@ const roleLabel = computed(() => {
   return 'Użytkownik'
 })
 
+const canManageUsers = computed(() => userStore.profile?.role === 'admin')
+
 function findProject(id: number | null | undefined) {
   if (id == null) {
     return undefined
@@ -308,7 +318,12 @@ function goToProjects() {
   router.push('/projects')
 }
 
+function goToUsers() {
+  router.push('/users')
+}
+
 onMounted(async () => {
+  userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
     router.replace('/login')
     return
