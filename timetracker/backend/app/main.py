@@ -10,7 +10,7 @@ from . import models  # noqa: F401
 from .db import Base, engine
 from .schema_utils import (
     ensure_project_code_column,
-    ensure_worklog_absences_column,
+    ensure_all_columns,
     ensure_worklog_employee_count_column,
     ensure_worklog_hours_worked_column,
     ensure_worklog_meals_served_column,
@@ -69,7 +69,7 @@ def on_startup() -> None:
     ensure_worklog_hours_worked_column(engine)
     ensure_worklog_meals_served_column(engine)
     ensure_worklog_overnight_stays_column(engine)
-    ensure_worklog_absences_column(engine)
+    ensure_all_columns(engine)
 
 
 @app.get("/health", tags=["health"])

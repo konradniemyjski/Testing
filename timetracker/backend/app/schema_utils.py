@@ -1,291 +1,93 @@
-"""Database schema utility helpers."""
+from sqlalchemy import inspect, text, Integer, Float, String, Boolean, Text
+from sqlalchemy.exc import SQLAlchemyError
+import logging
 
-from __future__ import annotations
-
-import re
-from sqlalchemy import Engine, inspect, text
-
+logger = logging.getLogger(__name__)
 
 
-def _slugify(value: str, *, max_length: int) -> str:
-    """Create a lowercase, hyphen separated slug no longer than ``max_length``."""
-    value = re.sub(r"[^\w]+", "-", value.lower()).strip("-")
-    if not value:
-        return ""
-    if len(value) <= max_length:
-        return value
-    return value[:max_length].rstrip("-")
-
-
-def ensure_project_code_column(engine: Engine) -> None:
-    """Ensure the ``projects.code`` column exists and is populated."""
-    inspector = inspect(engine)
-    if "projects" not in inspector.get_table_names():
-        return
-
-    columns = {column["name"] for column in inspector.get_columns("projects")}
-    if "code" in columns:
-        return
-
-    dialect = engine.dialect.name
-
-    with engine.begin() as connection:
-        column_type = "VARCHAR(50)" if dialect != "sqlite" else "TEXT"
-        connection.execute(text(f"ALTER TABLE projects ADD COLUMN code {column_type}"))
-
-        rows = connection.execute(
-            text("SELECT id, name FROM projects ORDER BY id")
-        ).mappings()
-        existing_codes = set()
-        updates: list[tuple[int, str]] = []
-
-        for row in rows:
-            base_code = _slugify(row.get("name") or "", max_length=50)
-            if not base_code:
-                base_code = f"project-{row['id']}"
-            if len(base_code) > 50:
-                base_code = base_code[:50]
-
-            candidate = base_code
-            suffix = 2
-            while candidate in existing_codes:
-                suffix_str = f"-{suffix}"
-                candidate = base_code[: 50 - len(suffix_str)] + suffix_str
-                suffix += 1
-            existing_codes.add(candidate)
-            updates.append((row["id"], candidate))
-
-        for project_id, code in updates:
-            connection.execute(
-                text("UPDATE projects SET code = :code WHERE id = :project_id"),
-                {"code": code, "project_id": project_id},
-            )
-
-        if dialect == "postgresql":
-            connection.execute(text("ALTER TABLE projects ALTER COLUMN code SET NOT NULL"))
-        connection.execute(
-            text("CREATE UNIQUE INDEX IF NOT EXISTS ix_projects_code ON projects (code)")
-        )
-
-
-def ensure_worklog_site_code_column(engine: Engine) -> None:
-    """Ensure the ``worklogs.site_code`` column exists and is populated."""
-
-    inspector = inspect(engine)
-    if "worklogs" not in inspector.get_table_names():
-        return
-
-    columns = {column["name"] for column in inspector.get_columns("worklogs")}
-    if "site_code" in columns:
-        return
-
-    dialect = engine.dialect.name
-
-    with engine.begin() as connection:
-        column_type = "VARCHAR(50)" if dialect != "sqlite" else "TEXT"
-        connection.execute(text(f"ALTER TABLE worklogs ADD COLUMN site_code {column_type}"))
-
-        if dialect == "sqlite":
-            connection.execute(
-                text(
-                    """
-                    UPDATE worklogs
-                    SET site_code = (
-                        SELECT CASE
-                            WHEN projects.code IS NOT NULL AND projects.code != ''
-                                THEN projects.code
-                            ELSE 'worklog-' || worklogs.id
-                        END
-                        FROM projects
-                        WHERE projects.id = worklogs.project_id
-                    )
-                    WHERE site_code IS NULL
-                    """
-                )
-            )
-            connection.execute(
-                text(
-                    "UPDATE worklogs SET site_code = 'worklog-' || id "
-                    "WHERE site_code IS NULL OR site_code = ''"
-                )
-            )
-        else:
-            connection.execute(
-                text(
-                    """
-                    UPDATE worklogs
-                    SET site_code = CASE
-                        WHEN projects.code IS NOT NULL AND projects.code != ''
-                            THEN projects.code
-                        ELSE CONCAT('worklog-', worklogs.id::TEXT)
-                    END
-                    FROM projects
-                    WHERE projects.id = worklogs.project_id
-                    """
-                )
-            )
-            connection.execute(
-                text(
-                    "UPDATE worklogs SET site_code = CONCAT('worklog-', id::TEXT) "
-                    "WHERE site_code IS NULL OR site_code = ''"
-                )
-            )
-
-        if dialect == "postgresql":
-            connection.execute(text("ALTER TABLE worklogs ALTER COLUMN site_code SET NOT NULL"))
-
-
-def ensure_worklog_employee_count_column(engine: Engine) -> None:
-    """Ensure the ``worklogs.employee_count`` column exists and is populated."""
-
-    inspector = inspect(engine)
-    if "worklogs" not in inspector.get_table_names():
-        return
-
-    columns = {column["name"] for column in inspector.get_columns("worklogs")}
-    if "employee_count" in columns:
-        return
-
-    dialect = engine.dialect.name
-
-    with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE worklogs ADD COLUMN employee_count INTEGER"))
-        connection.execute(
-            text(
-                "UPDATE worklogs SET employee_count = 1 "
-                "WHERE employee_count IS NULL"
-            )
-        )
-
-        if dialect == "postgresql":
-            connection.execute(
-                text("ALTER TABLE worklogs ALTER COLUMN employee_count SET NOT NULL")
-            )
-
-
-def _ensure_worklog_numeric_column(
-    engine: Engine,
-    column_name: str,
-    *,
-    column_type_by_dialect: dict[str, str],
-    default_value: float | int,
-    enforce_not_null: bool = True,
-) -> None:
-    """Ensure a numeric ``worklogs`` column exists with a populated default."""
-def ensure_worklog_hours_worked_column(engine: Engine) -> None:
-    """Ensure the ``worklogs.hours_worked`` column exists and is populated."""
-
-    inspector = inspect(engine)
-    if "worklogs" not in inspector.get_table_names():
-        return
-
-    columns = {column["name"] for column in inspector.get_columns("worklogs")}
-    if column_name in columns:
-        return
-
-    dialect = engine.dialect.name
-    column_type = column_type_by_dialect.get(dialect, column_type_by_dialect["default"])
-
-    with engine.begin() as connection:
-        if dialect == "sqlite":
-            definition = f"{column_type} DEFAULT {default_value}"
-            if enforce_not_null:
-                definition += " NOT NULL"
-            connection.execute(
-                text(f"ALTER TABLE worklogs ADD COLUMN {column_name} {definition}")
-            )
-        else:
-            connection.execute(
-                text(f"ALTER TABLE worklogs ADD COLUMN {column_name} {column_type}")
-            )
-            connection.execute(
-                text(
-                    f"UPDATE worklogs SET {column_name} = :default_value "
-                    f"WHERE {column_name} IS NULL"
-                ),
-                {"default_value": default_value},
-            )
-            if enforce_not_null:
-                connection.execute(
-                    text(
-                        f"ALTER TABLE worklogs ALTER COLUMN {column_name} SET DEFAULT :default_value"
-                    ),
-                    {"default_value": default_value},
-                )
-                connection.execute(
-                    text(
-                        f"ALTER TABLE worklogs ALTER COLUMN {column_name} SET NOT NULL"
-                    )
-                )
-
-
-def ensure_worklog_hours_worked_column(engine: Engine) -> None:
-    """Ensure the ``worklogs.hours_worked`` column exists and is populated."""
-
-    _ensure_worklog_numeric_column(
-        engine,
-        "hours_worked",
-        column_type_by_dialect={"sqlite": "FLOAT", "default": "DOUBLE PRECISION"},
-        default_value=8,
-    )
-
-
-def ensure_worklog_meals_served_column(engine: Engine) -> None:
-    """Ensure the ``worklogs.meals_served`` column exists and is populated."""
-
-    _ensure_worklog_numeric_column(
-        engine,
-        "meals_served",
-        column_type_by_dialect={"sqlite": "INTEGER", "default": "INTEGER"},
-        default_value=0,
-    )
-
-
-def ensure_worklog_overnight_stays_column(engine: Engine) -> None:
-    """Ensure the ``worklogs.overnight_stays`` column exists and is populated."""
-
-    _ensure_worklog_numeric_column(
-        engine,
-        "overnight_stays",
-        column_type_by_dialect={"sqlite": "INTEGER", "default": "INTEGER"},
-        default_value=0,
-    )
-
-
-def ensure_worklog_absences_column(engine: Engine) -> None:
-    """Ensure the ``worklogs.absences`` column exists and is populated."""
-
-    _ensure_worklog_numeric_column(
-        engine,
-        "absences",
-        column_type_by_dialect={"sqlite": "INTEGER", "default": "INTEGER"},
-        default_value=0,
-    )
-    inspector = inspect(engine)
-    columns = inspector.get_columns('worklog_absences')  # Ta linia prawdopodobnie brakuje
+def ensure_worklog_absences_column(engine):
+    """Ensure the worklog_absences table has the hours_worked column."""
+    from sqlalchemy import inspect
     
-    if "hours_worked" in columns:
-        # reszta kodu...
+    inspector = inspect(engine)
+    
+    # Check if table exists
+    if 'worklog_absences' not in inspector.get_table_names():
+        logger.info("Table worklog_absences doesn't exist yet, skipping column check")
+        return
+    
+    # Get existing columns
+    columns = [col['name'] for col in inspector.get_columns('worklog_absences')]
+    
+    if "hours_worked" not in columns:
+        logger.info("Adding hours_worked column to worklog_absences table")
+        dialect = engine.dialect.name
+        
+        if dialect == 'postgresql':
+            alter_sql = text("ALTER TABLE worklog_absences ADD COLUMN hours_worked FLOAT DEFAULT 0.0")
+        elif dialect == 'mysql':
+            alter_sql = text("ALTER TABLE worklog_absences ADD COLUMN hours_worked FLOAT DEFAULT 0.0")
+        else:  # sqlite
+            alter_sql = text("ALTER TABLE worklog_absences ADD COLUMN hours_worked REAL DEFAULT 0.0")
+        
+        try:
+            with engine.connect() as conn:
+                conn.execute(alter_sql)
+                conn.commit()
+            logger.info("Successfully added hours_worked column")
+        except SQLAlchemyError as e:
+            logger.error(f"Error adding hours_worked column: {e}")
 
+
+def ensure_worklogs_columns(engine):
+    """Ensure the worklogs table has all required columns."""
+    from sqlalchemy import inspect
+    
+    inspector = inspect(engine)
+    
+    # Check if table exists
+    if 'worklogs' not in inspector.get_table_names():
+        logger.info("Table worklogs doesn't exist yet, skipping column check")
+        return
+    
+    # Get existing columns
+    existing_columns = [col['name'] for col in inspector.get_columns('worklogs')]
+    
+    # Define required columns with their types
+    required_columns = {
+        'meals_served': ('INTEGER', 0),
+        'overnight_stays': ('INTEGER', 0),
+        'absences': ('INTEGER', 0)
+    }
+    
     dialect = engine.dialect.name
+    
+    for column_name, (column_type, default_value) in required_columns.items():
+        if column_name not in existing_columns:
+            logger.info(f"Adding {column_name} column to worklogs table")
+            
+            # Adjust column type based on dialect
+            if dialect == 'postgresql':
+                sql_type = column_type
+            elif dialect == 'mysql':
+                sql_type = column_type
+            else:  # sqlite
+                sql_type = column_type
+            
+            alter_sql = text(f"ALTER TABLE worklogs ADD COLUMN {column_name} {sql_type} DEFAULT {default_value}")
+            
+            try:
+                with engine.connect() as conn:
+                    conn.execute(alter_sql)
+                    conn.commit()
+                logger.info(f"Successfully added {column_name} column")
+            except SQLAlchemyError as e:
+                logger.error(f"Error adding {column_name} column: {e}")
 
-    if dialect == "sqlite":
-        column_type = "FLOAT"
-    else:
-        column_type = "DOUBLE PRECISION"
 
-    with engine.begin() as connection:
-        connection.execute(
-            text(f"ALTER TABLE worklogs ADD COLUMN hours_worked {column_type}")
-        )
-        connection.execute(
-            text(
-                "UPDATE worklogs SET hours_worked = 8 "
-                "WHERE hours_worked IS NULL"
-            )
-        )
-
-        if dialect == "postgresql":
-            connection.execute(
-                text("ALTER TABLE worklogs ALTER COLUMN hours_worked SET NOT NULL")
-            )
+def ensure_all_columns(engine):
+    """Main function to ensure all tables have required columns."""
+    logger.info("Checking and adding missing columns...")
+    ensure_worklog_absences_column(engine)
+    ensure_worklogs_columns(engine)
+    logger.info("Column check complete")
