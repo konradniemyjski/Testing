@@ -1,15 +1,37 @@
 from __future__ import annotations
 
 from datetime import datetime
+from io import BytesIO
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
+
+from openpyxl import Workbook
 
 from .. import auth, models, schemas
 from ..db import get_db
 
 router = APIRouter(prefix="/worklogs", tags=["worklogs"])
+
+
+def _build_user_worklog_query(
+    db: Session,
+    current_user: models.User,
+    project_id: int | None,
+    start_date: datetime | None,
+    end_date: datetime | None,
+):
+    query = db.query(models.WorkLog).filter(models.WorkLog.user_id == current_user.id)
+    if project_id is not None:
+        query = query.filter(models.WorkLog.project_id == project_id)
+    if start_date is not None:
+        query = query.filter(models.WorkLog.date >= start_date)
+    if end_date is not None:
+        query = query.filter(models.WorkLog.date <= end_date)
+    return query
 
 
 @router.get("/", response_model=list[schemas.WorkLogRead])
@@ -20,13 +42,7 @@ async def list_worklogs(
     start_date: datetime | None = Query(default=None),
     end_date: datetime | None = Query(default=None),
 ):
-    query = db.query(models.WorkLog).filter(models.WorkLog.user_id == current_user.id)
-    if project_id is not None:
-        query = query.filter(models.WorkLog.project_id == project_id)
-    if start_date is not None:
-        query = query.filter(models.WorkLog.date >= start_date)
-    if end_date is not None:
-        query = query.filter(models.WorkLog.date <= end_date)
+    query = _build_user_worklog_query(db, current_user, project_id, start_date, end_date)
     return query.order_by(models.WorkLog.date.desc()).all()
 
 
@@ -39,7 +55,13 @@ async def create_worklog(
     project = db.get(models.Project, worklog_in.project_id)
     if not project:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project does not exist")
-    worklog = models.WorkLog(**worklog_in.model_dump(), user_id=current_user.id)
+    worklog_data = worklog_in.model_dump()
+    worklog_data["site_code"] = worklog_data["site_code"].strip()
+    if project.code and not worklog_data["site_code"]:
+        worklog_data["site_code"] = project.code
+    if worklog_data.get("notes"):
+        worklog_data["notes"] = worklog_data["notes"].strip() or None
+    worklog = models.WorkLog(**worklog_data, user_id=current_user.id)
     db.add(worklog)
     db.commit()
     db.refresh(worklog)
@@ -61,12 +83,83 @@ async def update_worklog(
         project = db.get(models.Project, update_data["project_id"])
         if not project:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project does not exist")
+    if "site_code" in update_data and update_data["site_code"] is not None:
+        update_data["site_code"] = update_data["site_code"].strip()
+    if "notes" in update_data and update_data["notes"] is not None:
+        update_data["notes"] = update_data["notes"].strip() or None
     for field, value in update_data.items():
         setattr(worklog, field, value)
     db.add(worklog)
     db.commit()
     db.refresh(worklog)
     return worklog
+
+
+@router.get("/export")
+async def export_worklogs(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
+    project_id: int | None = Query(default=None),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+):
+    query = _build_user_worklog_query(db, current_user, project_id, start_date, end_date)
+    worklogs = (
+        query.options(joinedload(models.WorkLog.project))
+        .order_by(models.WorkLog.date.asc(), models.WorkLog.id.asc())
+        .all()
+    )
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Ewidencja czasu pracy"
+
+    headers = [
+        "Data",
+        "Kod budowy",
+        "Nazwa budowy",
+        "Liczba pracowników",
+        "Łączna liczba godzin",
+        "Posiłki",
+        "Noclegi",
+        "Nieobecności",
+        "Uwagi",
+    ]
+    sheet.append(headers)
+
+    for worklog in worklogs:
+        project_name = worklog.project.name if worklog.project else ""
+        sheet.append(
+            [
+                worklog.date.date().isoformat(),
+                worklog.site_code,
+                project_name,
+                worklog.employee_count,
+                float(worklog.hours_worked),
+                worklog.meals_served,
+                worklog.overnight_stays,
+                worklog.absences,
+                worklog.notes or "",
+            ]
+        )
+
+    for column_cells in sheet.columns:
+        max_length = max((len(str(cell.value)) if cell.value is not None else 0) for cell in column_cells)
+        adjusted_width = max_length + 2
+        column_letter = column_cells[0].column_letter
+        sheet.column_dimensions[column_letter].width = min(adjusted_width, 40)
+
+    stream = BytesIO()
+    workbook.save(stream)
+    stream.seek(0)
+
+    filename = f"raport_godzin_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    headers_response = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+
+    return StreamingResponse(stream, media_type=headers_response["Content-Type"], headers=headers_response)
 
 
 @router.delete("/{worklog_id}", status_code=status.HTTP_204_NO_CONTENT)

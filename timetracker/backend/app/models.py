@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -33,6 +33,7 @@ class Project(Base, TimestampMixin):
     __tablename__ = "projects"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -46,7 +47,12 @@ class WorkLog(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
-    hours: Mapped[int] = mapped_column(Integer, nullable=False)
+    site_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    employee_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    hours_worked: Mapped[float] = mapped_column(Float, nullable=False)
+    meals_served: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    overnight_stays: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    absences: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user: Mapped[User] = relationship(back_populates="worklogs")
