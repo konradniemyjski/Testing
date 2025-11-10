@@ -47,8 +47,9 @@ async def read_users_me(
 async def register_user(
     user_in: schemas.UserCreate,
     db: Annotated[Session, Depends(get_db)],
-) -> models.User:
-    """Register a new standard user."""
+):
+    """Register a new user"""
+    # Check if user with this email already exists
     normalized_email = user_in.email.strip()
     existing_user = (
         db.query(models.User)
@@ -61,7 +62,8 @@ async def register_user(
             detail="User with this email already exists",
         )
 
-    hashed_password = auth.get_password_hash(user_in.password)
+    # Create new user with hashed password
+    hashed_password = get_password_hash(user_in.password)
     db_user = models.User(
         email=normalized_email,
         full_name=user_in.full_name.strip() if user_in.full_name else None,
