@@ -161,3 +161,38 @@ def ensure_worklog_employee_count_column(engine: Engine) -> None:
             connection.execute(
                 text("ALTER TABLE worklogs ALTER COLUMN employee_count SET NOT NULL")
             )
+
+
+def ensure_worklog_hours_worked_column(engine: Engine) -> None:
+    """Ensure the ``worklogs.hours_worked`` column exists and is populated."""
+
+    inspector = inspect(engine)
+    if "worklogs" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("worklogs")}
+    if "hours_worked" in columns:
+        return
+
+    dialect = engine.dialect.name
+
+    if dialect == "sqlite":
+        column_type = "FLOAT"
+    else:
+        column_type = "DOUBLE PRECISION"
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(f"ALTER TABLE worklogs ADD COLUMN hours_worked {column_type}")
+        )
+        connection.execute(
+            text(
+                "UPDATE worklogs SET hours_worked = 8 "
+                "WHERE hours_worked IS NULL"
+            )
+        )
+
+        if dialect == "postgresql":
+            connection.execute(
+                text("ALTER TABLE worklogs ALTER COLUMN hours_worked SET NOT NULL")
+            )
