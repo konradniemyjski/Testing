@@ -134,3 +134,30 @@ def ensure_worklog_site_code_column(engine: Engine) -> None:
         if dialect == "postgresql":
             connection.execute(text("ALTER TABLE worklogs ALTER COLUMN site_code SET NOT NULL"))
 
+
+def ensure_worklog_employee_count_column(engine: Engine) -> None:
+    """Ensure the ``worklogs.employee_count`` column exists and is populated."""
+
+    inspector = inspect(engine)
+    if "worklogs" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("worklogs")}
+    if "employee_count" in columns:
+        return
+
+    dialect = engine.dialect.name
+
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE worklogs ADD COLUMN employee_count INTEGER"))
+        connection.execute(
+            text(
+                "UPDATE worklogs SET employee_count = 1 "
+                "WHERE employee_count IS NULL"
+            )
+        )
+
+        if dialect == "postgresql":
+            connection.execute(
+                text("ALTER TABLE worklogs ALTER COLUMN employee_count SET NOT NULL")
+            )
