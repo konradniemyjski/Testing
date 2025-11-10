@@ -6,8 +6,14 @@
 
       <form @submit.prevent="handleRegister">
         <div class="form-group">
-          <label for="email">Adres e-mail</label>
-          <input id="email" v-model="form.email" type="email" required placeholder="twoj@przyklad.pl" />
+          <label for="email">Login</label>
+          <input
+            id="email"
+            v-model="form.email"
+            type="text"
+            required
+            placeholder="np. twoj@przyklad.pl"
+          />
         </div>
 
         <div class="form-group">
@@ -18,14 +24,6 @@
         <div class="form-group">
           <label for="password">Hasło</label>
           <input id="password" v-model="form.password" type="password" required placeholder="********" />
-        </div>
-
-        <div class="form-group">
-          <label for="role">Rola</label>
-          <select id="role" v-model="form.role">
-            <option value="user">Użytkownik</option>
-            <option value="admin">Administrator</option>
-          </select>
         </div>
 
         <button class="primary-btn" type="submit" :disabled="loading">
@@ -52,8 +50,7 @@ const router = useRouter()
 const form = reactive({
   email: '',
   password: '',
-  full_name: '',
-  role: 'user' as 'user' | 'admin'
+  full_name: ''
 })
 const loading = ref(false)
 const success = ref('')
@@ -61,7 +58,7 @@ const error = ref('')
 
 async function handleRegister() {
   if (!form.email || !form.password) {
-    error.value = 'Adres e-mail i hasło są wymagane.'
+    error.value = 'Login i hasło są wymagane.'
     return
   }
 
@@ -69,7 +66,7 @@ async function handleRegister() {
     loading.value = true
     error.value = ''
     success.value = ''
-    await register({ ...form })
+    await register({ email: form.email, password: form.password, full_name: form.full_name })
     success.value = 'Konto zostało utworzone! Możesz się teraz zalogować.'
     setTimeout(() => router.push('/login'), 600)
   } catch (err: any) {
