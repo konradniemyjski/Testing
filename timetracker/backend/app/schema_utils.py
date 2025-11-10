@@ -66,3 +66,71 @@ def ensure_project_code_column(engine: Engine) -> None:
         connection.execute(
             text("CREATE UNIQUE INDEX IF NOT EXISTS ix_projects_code ON projects (code)")
         )
+
+
+def ensure_worklog_site_code_column(engine: Engine) -> None:
+    """Ensure the ``worklogs.site_code`` column exists and is populated."""
+
+    inspector = inspect(engine)
+    if "worklogs" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("worklogs")}
+    if "site_code" in columns:
+        return
+
+    dialect = engine.dialect.name
+
+    with engine.begin() as connection:
+        column_type = "VARCHAR(50)" if dialect != "sqlite" else "TEXT"
+        connection.execute(text(f"ALTER TABLE worklogs ADD COLUMN site_code {column_type}"))
+
+        if dialect == "sqlite":
+            connection.execute(
+                text(
+                    """
+                    UPDATE worklogs
+                    SET site_code = (
+                        SELECT CASE
+                            WHEN projects.code IS NOT NULL AND projects.code != ''
+                                THEN projects.code
+                            ELSE 'worklog-' || worklogs.id
+                        END
+                        FROM projects
+                        WHERE projects.id = worklogs.project_id
+                    )
+                    WHERE site_code IS NULL
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    "UPDATE worklogs SET site_code = 'worklog-' || id "
+                    "WHERE site_code IS NULL OR site_code = ''"
+                )
+            )
+        else:
+            connection.execute(
+                text(
+                    """
+                    UPDATE worklogs
+                    SET site_code = CASE
+                        WHEN projects.code IS NOT NULL AND projects.code != ''
+                            THEN projects.code
+                        ELSE CONCAT('worklog-', worklogs.id::TEXT)
+                    END
+                    FROM projects
+                    WHERE projects.id = worklogs.project_id
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    "UPDATE worklogs SET site_code = CONCAT('worklog-', id::TEXT) "
+                    "WHERE site_code IS NULL OR site_code = ''"
+                )
+            )
+
+        if dialect == "postgresql":
+            connection.execute(text("ALTER TABLE worklogs ALTER COLUMN site_code SET NOT NULL"))
+

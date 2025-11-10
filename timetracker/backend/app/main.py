@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import models to register SQLAlchemy mappings before table creation
 from . import models  # noqa: F401
 from .db import Base, engine
-from .schema_utils import ensure_project_code_column
+from .schema_utils import ensure_project_code_column, ensure_worklog_site_code_column
 from .routers import auth as auth_router
 from .routers import projects as projects_router
 from .routers import worklogs as worklogs_router
@@ -56,6 +56,7 @@ app.add_middleware(
 def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
     ensure_project_code_column(engine)
+    ensure_worklog_site_code_column(engine)
 
 
 @app.get("/health", tags=["health"])
