@@ -1,14 +1,11 @@
 <template>
   <div class="container">
+    <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
         <div>
           <h1>Zarządzanie użytkownikami</h1>
           <p class="text-muted">Przeglądaj konta i przypisuj odpowiednie role.</p>
-        </div>
-        <div style="display: flex; gap: 0.75rem; align-items: center;">
-          <button class="primary-btn" type="button" @click="goToDashboard">Panel główny</button>
-          <button class="primary-btn" type="button" @click="handleLogout">Wyloguj</button>
         </div>
       </header>
 
@@ -49,9 +46,9 @@
               <td>{{ formatDate(user.created_at) }}</td>
               <td>{{ formatDate(user.updated_at) }}</td>
               <td>
-                <div class="actions">
+                <div class="icon-actions">
                   <button
-                    class="action-btn action-btn--edit"
+                    class="icon-button icon-button--edit"
                     type="button"
                     @click="openEditModal(user)"
                     title="Edytuj użytkownika"
@@ -59,7 +56,7 @@
                     ✏️
                   </button>
                   <button
-                    class="action-btn action-btn--delete"
+                    class="icon-button icon-button--delete"
                     type="button"
                     @click="openDeleteModal(user)"
                     title="Usuń użytkownika"
@@ -137,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useUserStore } from '~/stores/user'
 
@@ -173,6 +170,8 @@ const editForm = reactive({
   full_name: ''
 })
 const userToDelete = ref<User | null>(null)
+
+const canManageUsers = computed(() => userStore.profile?.role === 'admin')
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('pl-PL')
@@ -234,10 +233,6 @@ function onRoleChange(userId: number, event: Event) {
 function handleLogout() {
   userStore.clear()
   router.replace('/login')
-}
-
-function goToDashboard() {
-  router.push('/dashboard')
 }
 
 function openEditModal(user: User) {
@@ -354,49 +349,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn {
-  width: 2.5rem;
-  height: 2.5rem;
-  border: none;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  color: #ffffff;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.action-btn--edit {
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-}
-
-.action-btn--edit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
-}
-
-.action-btn--delete {
-  background: linear-gradient(135deg, #ef4444, #f97316);
-}
-
-.action-btn--delete:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.35);
-}
-
-.action-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
-}
-
 .secondary-btn,
 .danger-btn {
   padding: 0.5rem 1rem;
@@ -445,11 +397,11 @@ onMounted(async () => {
 }
 
 .modal-content {
-  background: #ffffff;
+  background: linear-gradient(145deg, #f8fafc, #eef2ff);
   border-radius: 20px;
   padding: 2rem;
   width: min(480px, 100%);
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
 }
 
 .modal-content h2 {
@@ -458,7 +410,7 @@ onMounted(async () => {
 
 @media (prefers-color-scheme: dark) {
   .modal-content {
-    background: rgba(15, 23, 42, 0.95);
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(51, 65, 85, 0.95));
     color: #f8fafc;
   }
 }

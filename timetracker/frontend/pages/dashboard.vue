@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+    <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
         <div>
@@ -8,10 +9,7 @@
             Witaj ponownie, {{ userStore.profile?.full_name || userStore.profile?.email }}.
           </p>
         </div>
-        <div style="text-align: right;">
-          <p class="badge">Rola: {{ roleLabel }}</p>
-          <button class="primary-btn" style="margin-top: 0.5rem;" @click="handleLogout">Wyloguj</button>
-        </div>
+        <p class="badge">Rola: {{ roleLabel }}</p>
       </header>
 
       <section style="margin-top: 2rem; display: grid; gap: 2rem;">
@@ -106,20 +104,14 @@
         <div>
           <header style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;">
             <h2>Ostatnie wpisy</h2>
-            <div style="display: flex; gap: 0.75rem;">
-              <button class="primary-btn" type="button" @click="exportWorklogs" :disabled="exporting || !worklogs.length">
-                {{ exporting ? 'Przygotowywanie…' : 'Eksportuj do XLSX' }}
-              </button>
-              <button class="primary-btn" type="button" @click="goToProjects">Zarządzaj budowami</button>
-              <button
-                v-if="canManageUsers"
-                class="primary-btn"
-                type="button"
-                @click="goToUsers"
-              >
-                Użytkownicy
-              </button>
-            </div>
+            <button
+              class="primary-btn"
+              type="button"
+              @click="exportWorklogs"
+              :disabled="exporting || !worklogs.length"
+            >
+              {{ exporting ? 'Przygotowywanie…' : 'Eksportuj do XLSX' }}
+            </button>
           </header>
 
           <table v-if="worklogs.length" class="table">
@@ -312,14 +304,6 @@ async function exportWorklogs() {
 async function handleLogout() {
   userStore.clear()
   router.replace('/login')
-}
-
-function goToProjects() {
-  router.push('/projects')
-}
-
-function goToUsers() {
-  router.push('/users')
 }
 
 onMounted(async () => {
