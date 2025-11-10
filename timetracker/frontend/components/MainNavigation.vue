@@ -18,7 +18,7 @@
         Zarządzaj budowami
       </button>
       <button
-        v-if="canManageUsers"
+        v-if="userStore.profile?.role === 'admin'"
         type="button"
         class="nav-btn"
         :class="{ 'nav-btn--active': isActive('/users') }"
@@ -33,13 +33,13 @@
   </nav>
 </template>
 
+
 <script setup lang="ts">
-const { canManageUsers } = defineProps<{
-  canManageUsers: boolean
-}>()
+import { useUserStore } from '~/stores/user'
 
 const emit = defineEmits<{ (e: 'logout'): void }>()
 
+const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -53,6 +53,7 @@ function isActive(path: string) {
   return route.path === path
 }
 </script>
+
 
 <style scoped>
 .main-nav {
@@ -85,6 +86,7 @@ function isActive(path: string) {
   background: rgba(255, 255, 255, 0.85);
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  cursor: pointer;
 }
 
 .nav-btn:hover {
