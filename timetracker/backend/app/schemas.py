@@ -46,6 +46,22 @@ class UserUpdate(BaseModel):
     full_name: Optional[str | None] = Field(default=None, max_length=255)
 
 
+class UserSelfUpdate(BaseModel):
+    email: Optional[LoginIdentifier] = None
+    full_name: Optional[str | None] = Field(default=None, max_length=255)
+    password: Optional[str] = Field(default=None, min_length=6)
+    current_password: Optional[str] = Field(default=None, min_length=6)
+
+
+class UserSummary(BaseModel):
+    id: int
+    email: LoginIdentifier
+    full_name: Optional[str | None] = Field(default=None, max_length=255)
+
+    class Config:
+        from_attributes = True
+
+
 class ProjectBase(BaseModel):
     code: str = Field(min_length=1, max_length=50)
     name: str = Field(min_length=1, max_length=255)
@@ -104,6 +120,7 @@ class WorkLogRead(WorkLogBase):
     user_id: int
     created_at: datetime
     updated_at: datetime
+    user: Optional[UserSummary] = None
 
     class Config:
         from_attributes = True

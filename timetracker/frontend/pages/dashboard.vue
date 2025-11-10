@@ -126,6 +126,7 @@
                 <th>Noclegi</th>
                 <th>Nieobecności</th>
                 <th>Uwagi</th>
+                <th v-if="isAdmin">Autor</th>
                 <th>Akcje</th>
               </tr>
             </thead>
@@ -140,6 +141,9 @@
                 <td>{{ entry.overnight_stays }}</td>
                 <td>{{ entry.absences }}</td>
                 <td>{{ entry.notes || '—' }}</td>
+                <td v-if="isAdmin">
+                  <span class="author-pill">{{ formatAuthor(entry) }}</span>
+                </td>
                 <td>
                   <button
                     type="button"
@@ -172,6 +176,12 @@ type Project = {
   description?: string | null
 }
 
+type WorkLogUser = {
+  id: number
+  email: string
+  full_name?: string | null
+}
+
 type WorkLog = {
   id: number
   project_id: number
@@ -182,7 +192,9 @@ type WorkLog = {
   meals_served: number
   overnight_stays: number
   absences: number
+  user_id: number
   notes?: string | null
+  user?: WorkLogUser | null
 }
 
 const router = useRouter()
@@ -205,14 +217,14 @@ const form = reactive({
   notes: ''
 })
 
+const isAdmin = computed(() => userStore.profile?.role === 'admin')
+
 const roleLabel = computed(() => {
   if (userStore.profile?.role === 'admin') {
     return 'Administrator'
   }
   return 'Użytkownik'
 })
-
-const canManageUsers = computed(() => userStore.profile?.role === 'admin')
 
 function findProject(id: number | null | undefined) {
   if (id == null) {
@@ -227,6 +239,13 @@ function formatDate(date: string) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 2 }).format(value)
+}
+
+function formatAuthor(entry: WorkLog) {
+  const author = entry.user
+  const displayName = author?.full_name?.trim() || author?.email || 'Nieznany użytkownik'
+  const id = author?.id ?? entry.user_id
+  return `${displayName} (ID: ${id})`
 }
 
 async function loadProjects() {
@@ -315,3 +334,24 @@ onMounted(async () => {
   await Promise.all([loadProjects(), loadWorklogs()])
 })
 </script>
+
+<style scoped>
+.author-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .author-pill {
+    background: rgba(59, 130, 246, 0.25);
+    color: #bfdbfe;
+  }
+}
+</style>
