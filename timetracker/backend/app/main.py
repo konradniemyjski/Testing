@@ -16,21 +16,35 @@ from .routers import worklogs as worklogs_router
 app = FastAPI(title="Worklog API", version="2.0.0")
 
 default_allowed_origins = [
+    "http://localhost",
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://127.0.0.1",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
 ]
 allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS")
-allowed_origins = (
-    allowed_origins_env.split(",") if allowed_origins_env else default_allowed_origins
+if allowed_origins_env is not None:
+    allowed_origins = [
+        origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()
+    ]
+else:
+    allowed_origins = default_allowed_origins
+
+allow_origin_regex_env = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
+allow_origin_regex = (
+    allow_origin_regex_env.strip()
+    if allow_origin_regex_env and allow_origin_regex_env.strip()
+    else r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 )
-allow_origin_regex = os.getenv(
-    "CORS_ALLOW_ORIGIN_REGEX", r"https?://(localhost|127\.0\.0\.1)(:\\d+)?$"
-)
+
+if allowed_origins == ["*"]:
+    # Starlette disallows using wildcards together with a regex.
+    allow_origin_regex = None
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in allowed_origins if origin],
+    allow_origins=allowed_origins,
     allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
