@@ -35,6 +35,7 @@ class UserRead(UserBase):
 
 
 class ProjectBase(BaseModel):
+    code: str = Field(min_length=1, max_length=50)
     name: str = Field(min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=1000)
 
@@ -44,6 +45,7 @@ class ProjectCreate(ProjectBase):
 
 
 class ProjectUpdate(BaseModel):
+    code: Optional[str] = Field(default=None, min_length=1, max_length=50)
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=1000)
 
@@ -60,7 +62,12 @@ class ProjectRead(ProjectBase):
 class WorkLogBase(BaseModel):
     project_id: int
     date: datetime
-    hours: int = Field(ge=1, le=24)
+    site_code: str = Field(min_length=1, max_length=50)
+    employee_count: int = Field(ge=1, le=1000)
+    hours_worked: float = Field(gt=0, le=2000)
+    meals_served: int = Field(default=0, ge=0, le=2000)
+    overnight_stays: int = Field(default=0, ge=0, le=2000)
+    absences: int = Field(default=0, ge=0, le=2000)
     notes: Optional[str] = Field(default=None, max_length=2000)
 
 
@@ -71,7 +78,12 @@ class WorkLogCreate(WorkLogBase):
 class WorkLogUpdate(BaseModel):
     project_id: Optional[int] = None
     date: Optional[datetime] = None
-    hours: Optional[int] = Field(default=None, ge=1, le=24)
+    site_code: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    employee_count: Optional[int] = Field(default=None, ge=1, le=1000)
+    hours_worked: Optional[float] = Field(default=None, gt=0, le=2000)
+    meals_served: Optional[int] = Field(default=None, ge=0, le=2000)
+    overnight_stays: Optional[int] = Field(default=None, ge=0, le=2000)
+    absences: Optional[int] = Field(default=None, ge=0, le=2000)
     notes: Optional[str] = Field(default=None, max_length=2000)
 
 

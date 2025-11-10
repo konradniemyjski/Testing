@@ -1,41 +1,41 @@
 <template>
   <div class="container">
     <div class="card">
-      <h1>Create your account</h1>
-      <p class="text-muted">Join your team and start logging time.</p>
+      <h1>Utwórz konto</h1>
+      <p class="text-muted">Dołącz do zespołu i rejestruj czas pracy brygady.</p>
 
       <form @submit.prevent="handleRegister">
         <div class="form-group">
-          <label for="email">Email</label>
-          <input id="email" v-model="form.email" type="email" required placeholder="you@example.com" />
+          <label for="email">Adres e-mail</label>
+          <input id="email" v-model="form.email" type="email" required placeholder="twoj@przyklad.pl" />
         </div>
 
         <div class="form-group">
-          <label for="fullName">Full name</label>
-          <input id="fullName" v-model="form.full_name" type="text" placeholder="Jane Doe" />
+          <label for="fullName">Imię i nazwisko</label>
+          <input id="fullName" v-model="form.full_name" type="text" placeholder="Jan Kowalski" />
         </div>
 
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Hasło</label>
           <input id="password" v-model="form.password" type="password" required placeholder="********" />
         </div>
 
         <div class="form-group">
-          <label for="role">Role</label>
+          <label for="role">Rola</label>
           <select id="role" v-model="form.role">
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
+            <option value="user">Użytkownik</option>
+            <option value="admin">Administrator</option>
           </select>
         </div>
 
         <button class="primary-btn" type="submit" :disabled="loading">
-          {{ loading ? 'Creating account…' : 'Create account' }}
+          {{ loading ? 'Tworzenie konta…' : 'Utwórz konto' }}
         </button>
       </form>
 
       <p class="text-muted" style="margin-top: 1.5rem;">
-        Already registered?
-        <NuxtLink to="/login">Sign in</NuxtLink>
+        Masz już konto?
+        <NuxtLink to="/login">Zaloguj się</NuxtLink>
       </p>
 
       <p v-if="success" style="color: #10b981;">{{ success }}</p>
@@ -61,7 +61,7 @@ const error = ref('')
 
 async function handleRegister() {
   if (!form.email || !form.password) {
-    error.value = 'Email and password are required.'
+    error.value = 'Adres e-mail i hasło są wymagane.'
     return
   }
 
@@ -70,10 +70,10 @@ async function handleRegister() {
     error.value = ''
     success.value = ''
     await register({ ...form })
-    success.value = 'Account created! You can sign in now.'
+    success.value = 'Konto zostało utworzone! Możesz się teraz zalogować.'
     setTimeout(() => router.push('/login'), 600)
   } catch (err: any) {
-    error.value = err?.data?.detail ?? 'Registration failed. Please try again.'
+    error.value = 'Nie udało się utworzyć konta. Spróbuj ponownie.'
   } finally {
     loading.value = false
   }

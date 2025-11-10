@@ -32,10 +32,25 @@ async def create_project(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[models.User, Depends(auth.get_current_active_user)],
 ):
-    existing = db.query(models.Project).filter(models.Project.name == project_in.name).first()
-    if existing:
+    project_data = project_in.model_dump()
+    project_data["code"] = project_data["code"].strip()
+    project_data["name"] = project_data["name"].strip()
+    if project_data.get("description"):
+        project_data["description"] = project_data["description"].strip() or None
+
+    if not project_data["code"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project code cannot be empty")
+    if not project_data["name"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name cannot be empty")
+
+    existing_name = db.query(models.Project).filter(models.Project.name == project_data["name"]).first()
+    if existing_name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name already in use")
-    project = models.Project(**project_in.model_dump())
+
+    existing_code = db.query(models.Project).filter(models.Project.code == project_data["code"]).first()
+    if existing_code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project code already in use")
+    project = models.Project(**project_data)
     db.add(project)
     db.commit()
     db.refresh(project)
@@ -62,6 +77,9 @@ async def update_project(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
     update_data = project_in.model_dump(exclude_unset=True)
     if "name" in update_data:
+        update_data["name"] = update_data["name"].strip() if update_data["name"] is not None else None
+        if update_data["name"] == "":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name cannot be empty")
         existing = (
             db.query(models.Project)
             .filter(models.Project.name == update_data["name"], models.Project.id != project_id)
@@ -69,6 +87,19 @@ async def update_project(
         )
         if existing:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name already in use")
+    if "code" in update_data:
+        update_data["code"] = update_data["code"].strip() if update_data["code"] is not None else None
+        if update_data["code"] == "":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project code cannot be empty")
+        existing_code = (
+            db.query(models.Project)
+            .filter(models.Project.code == update_data["code"], models.Project.id != project_id)
+            .first()
+        )
+        if existing_code:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project code already in use")
+    if "description" in update_data and update_data["description"] is not None:
+        update_data["description"] = update_data["description"].strip() or None
     for field, value in update_data.items():
         setattr(project, field, value)
     db.add(project)

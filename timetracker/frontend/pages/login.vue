@@ -1,26 +1,26 @@
 <template>
   <div class="container">
     <div class="card">
-      <h1>Sign in to Worklog</h1>
-      <p class="text-muted">Track your hours with a refreshed Nuxt + FastAPI stack.</p>
+      <h1>Zaloguj się do rejestru pracy</h1>
+      <p class="text-muted">Monitoruj godziny pracy brygady na placach budowy.</p>
 
       <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <label for="email">Email</label>
-          <input id="email" v-model="form.email" type="email" placeholder="you@example.com" required />
+          <label for="email">Adres e-mail</label>
+          <input id="email" v-model="form.email" type="email" placeholder="twoj@przyklad.pl" required />
         </div>
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Hasło</label>
           <input id="password" v-model="form.password" type="password" placeholder="********" required />
         </div>
         <button class="primary-btn" type="submit" :disabled="loading">
-          {{ loading ? 'Signing in…' : 'Sign in' }}
+          {{ loading ? 'Trwa logowanie…' : 'Zaloguj się' }}
         </button>
       </form>
 
       <p class="text-muted" style="margin-top: 1.5rem;">
-        Need an account?
-        <NuxtLink to="/register">Create one</NuxtLink>
+        Nie masz konta?
+        <NuxtLink to="/register">Utwórz je</NuxtLink>
       </p>
 
       <p v-if="error" style="color: #ef4444;">{{ error }}</p>
@@ -43,7 +43,7 @@ const error = ref('')
 
 async function handleLogin() {
   if (!form.email || !form.password) {
-    error.value = 'Email and password are required.'
+    error.value = 'Adres e-mail i hasło są wymagane.'
     return
   }
 
@@ -53,7 +53,7 @@ async function handleLogin() {
     await login(form.email, form.password)
     router.push('/dashboard')
   } catch (err: any) {
-    error.value = err?.data?.detail ?? 'Failed to sign in. Please verify your credentials.'
+    error.value = 'Nie udało się zalogować. Sprawdź dane i spróbuj ponownie.'
   } finally {
     loading.value = false
   }
