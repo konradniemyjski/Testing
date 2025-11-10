@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+    <MainNavigation @logout="handleLogout" />
     <div class="card">
       <header style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
         <div>
@@ -8,10 +9,7 @@
             Witaj ponownie, {{ userStore.profile?.full_name || userStore.profile?.email }}.
           </p>
         </div>
-        <div style="text-align: right;">
-          <p class="badge">Rola: {{ roleLabel }}</p>
-          <button class="primary-btn" style="margin-top: 0.5rem;" @click="handleLogout">Wyloguj</button>
-        </div>
+        <p class="badge">Rola: {{ roleLabel }}</p>
       </header>
 
       <section style="margin-top: 2rem; display: grid; gap: 2rem;">
@@ -106,20 +104,14 @@
         <div>
           <header style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;">
             <h2>Ostatnie wpisy</h2>
-            <div style="display: flex; gap: 0.75rem;">
-              <button class="primary-btn" type="button" @click="exportWorklogs" :disabled="exporting || !worklogs.length">
-                {{ exporting ? 'Przygotowywanie…' : 'Eksportuj do XLSX' }}
-              </button>
-              <button class="primary-btn" type="button" @click="goToProjects">Zarządzaj budowami</button>
-              <button
-                v-if="canManageUsers"
-                class="primary-btn"
-                type="button"
-                @click="goToUsers"
-              >
-                Użytkownicy
-              </button>
-            </div>
+            <button
+              class="primary-btn"
+              type="button"
+              @click="exportWorklogs"
+              :disabled="exporting || !worklogs.length"
+            >
+              {{ exporting ? 'Przygotowywanie…' : 'Eksportuj do XLSX' }}
+            </button>
           </header>
 
           <table v-if="worklogs.length" class="table">
@@ -134,6 +126,7 @@
                 <th>Noclegi</th>
                 <th>Nieobecności</th>
                 <th>Uwagi</th>
+                <th v-if="isAdmin">Autor</th>
                 <th>Akcje</th>
               </tr>
             </thead>
@@ -148,6 +141,9 @@
                 <td>{{ entry.overnight_stays }}</td>
                 <td>{{ entry.absences }}</td>
                 <td>{{ entry.notes || '—' }}</td>
+                <td v-if="isAdmin">
+                  <span class="author-pill">{{ formatAuthor(entry) }}</span>
+                </td>
                 <td>
                   <button
                     type="button"
@@ -180,6 +176,12 @@ type Project = {
   description?: string | null
 }
 
+type WorkLogUser = {
+  id: number
+  email: string
+  full_name?: string | null
+}
+
 type WorkLog = {
   id: number
   project_id: number
@@ -190,7 +192,9 @@ type WorkLog = {
   meals_served: number
   overnight_stays: number
   absences: number
+  user_id: number
   notes?: string | null
+  user?: WorkLogUser | null
 }
 
 const router = useRouter()
@@ -213,14 +217,14 @@ const form = reactive({
   notes: ''
 })
 
+const isAdmin = computed(() => userStore.profile?.role === 'admin')
+
 const roleLabel = computed(() => {
   if (userStore.profile?.role === 'admin') {
     return 'Administrator'
   }
   return 'Użytkownik'
 })
-
-const canManageUsers = computed(() => userStore.profile?.role === 'admin')
 
 function findProject(id: number | null | undefined) {
   if (id == null) {
@@ -235,6 +239,13 @@ function formatDate(date: string) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 2 }).format(value)
+}
+
+function formatAuthor(entry: WorkLog) {
+  const author = entry.user
+  const displayName = author?.full_name?.trim() || author?.email || 'Nieznany użytkownik'
+  const id = author?.id ?? entry.user_id
+  return `${displayName} (ID: ${id})`
 }
 
 async function loadProjects() {
@@ -314,14 +325,6 @@ async function handleLogout() {
   router.replace('/login')
 }
 
-function goToProjects() {
-  router.push('/projects')
-}
-
-function goToUsers() {
-  router.push('/users')
-}
-
 onMounted(async () => {
   userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
@@ -331,3 +334,24 @@ onMounted(async () => {
   await Promise.all([loadProjects(), loadWorklogs()])
 })
 </script>
+
+<style scoped>
+.author-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .author-pill {
+    background: rgba(59, 130, 246, 0.25);
+    color: #bfdbfe;
+  }
+}
+</style>

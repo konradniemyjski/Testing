@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-type UserProfile = {
+export type UserProfile = {
   id: number
   email: string
   full_name?: string | null
@@ -54,6 +54,12 @@ export const useUserStore = defineStore('user', {
 
       if (process.client) {
         window.localStorage.setItem(TOKEN_STORAGE_KEY, token)
+        window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile))
+      }
+    },
+    updateProfile(profile: UserProfile) {
+      this.profile = profile
+      if (process.client) {
         window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile))
       }
     },

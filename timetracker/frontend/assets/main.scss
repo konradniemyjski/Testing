@@ -103,6 +103,49 @@ button {
   color: #1d4ed8;
 }
 
+.icon-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.icon-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.icon-button--edit {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+
+.icon-button--edit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
+}
+
+.icon-button--delete {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+}
+
+.icon-button--delete:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.35);
+}
+
+.icon-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     background-color: #0f172a;
@@ -124,5 +167,13 @@ button {
 
   .table thead {
     background-color: rgba(37, 99, 235, 0.2);
+  }
+
+  .icon-button--edit {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.85), rgba(124, 58, 237, 0.85));
+  }
+
+  .icon-button--delete {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.85), rgba(249, 115, 22, 0.85));
   }
 }

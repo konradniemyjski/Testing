@@ -24,7 +24,9 @@ def _build_user_worklog_query(
     start_date: datetime | None,
     end_date: datetime | None,
 ):
-    query = db.query(models.WorkLog).filter(models.WorkLog.user_id == current_user.id)
+    query = db.query(models.WorkLog).options(joinedload(models.WorkLog.user))
+    if current_user.role != "admin":
+        query = query.filter(models.WorkLog.user_id == current_user.id)
     if project_id is not None:
         query = query.filter(models.WorkLog.project_id == project_id)
     if start_date is not None:
@@ -124,11 +126,18 @@ async def export_worklogs(
         "Noclegi",
         "Nieobecności",
         "Uwagi",
+        "Autor",
     ]
     sheet.append(headers)
 
     for worklog in worklogs:
         project_name = worklog.project.name if worklog.project else ""
+        author = worklog.user
+        if author is not None:
+            display_name = (author.full_name or "").strip() or author.email
+            author_label = f"{display_name} (ID: {author.id})"
+        else:
+            author_label = f"ID: {worklog.user_id}"
         sheet.append(
             [
                 worklog.date.date().isoformat(),
@@ -140,6 +149,7 @@ async def export_worklogs(
                 worklog.overnight_stays,
                 worklog.absences,
                 worklog.notes or "",
+                author_label,
             ]
         )
 

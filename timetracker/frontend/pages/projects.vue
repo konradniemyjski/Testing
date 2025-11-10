@@ -1,14 +1,11 @@
 <template>
   <div class="container">
+    <MainNavigation @logout="handleLogout" />
     <div class="card">
       <header style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
         <div>
           <h1>Budowy</h1>
           <p class="text-muted">Twórz i przeglądaj budowy wykorzystywane przy rozliczaniu pracy.</p>
-        </div>
-        <div style="display: flex; gap: 0.75rem; align-items: center;">
-          <button class="primary-btn" type="button" @click="goToDashboard">Panel główny</button>
-          <button class="primary-btn" type="button" @click="handleLogout">Wyloguj</button>
         </div>
       </header>
 
@@ -63,9 +60,9 @@
                 <td>{{ formatDate(project.created_at) }}</td>
                 <td>{{ formatDate(project.updated_at) }}</td>
                 <td>
-                  <div class="actions">
+                  <div class="icon-actions">
                     <button
-                      class="btn-edit"
+                      class="icon-button icon-button--edit"
                       type="button"
                       @click="openEditModal(project)"
                       title="Edytuj"
@@ -73,7 +70,7 @@
                       ✏️
                     </button>
                     <button
-                      class="btn-delete"
+                      class="icon-button icon-button--delete"
                       type="button"
                       @click="openDeleteModal(project)"
                       title="Usuń"
@@ -166,7 +163,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useUserStore } from '~/stores/user'
 
@@ -372,10 +369,6 @@ function handleLogout() {
   router.replace('/login')
 }
 
-function goToDashboard() {
-  router.push('/dashboard')
-}
-
 onMounted(async () => {
   userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
@@ -387,38 +380,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.btn-edit,
-.btn-delete {
-  width: 2.5rem;
-  height: 2.5rem;
-  border: none;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  color: #ffffff;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.btn-edit {
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-}
-
-.btn-edit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
-}
-
-.btn-delete {
-  background: linear-gradient(135deg, #ef4444, #f97316);
-}
-
-.btn-delete:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.35);
-}
-
 .secondary-btn {
   padding: 0.5rem 1rem;
   background-color: #6b7280;
@@ -452,9 +413,7 @@ onMounted(async () => {
 }
 
 .danger-btn:disabled,
-.secondary-btn:disabled,
-.btn-edit:disabled,
-.btn-delete:disabled {
+.secondary-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
@@ -476,15 +435,15 @@ onMounted(async () => {
 }
 
 .modal-content {
-  background: rgba(255, 255, 255, 0.98);
+  background: linear-gradient(145deg, #f8fafc, #eef2ff);
   padding: 2rem;
   border-radius: 20px;
   min-width: 400px;
   max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.15);
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   backdrop-filter: blur(18px);
 }
 
@@ -497,33 +456,9 @@ onMounted(async () => {
   color: #1f2937;
 }
 
-.modal-content .form-group input,
-.modal-content .form-group textarea {
-  background: #f9fafb;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  color: #0f172a;
-}
-
-.modal-content .form-group textarea::placeholder,
-.modal-content .form-group input::placeholder {
-  color: rgba(100, 116, 139, 0.8);
-}
-
 @media (prefers-color-scheme: dark) {
-  .btn-edit {
-    background: rgba(37, 99, 235, 0.18);
-    border-color: rgba(96, 165, 250, 0.45);
-    color: #93c5fd;
-  }
-
-  .btn-delete {
-    background: rgba(239, 68, 68, 0.18);
-    border-color: rgba(252, 165, 165, 0.4);
-    color: #fca5a5;
-  }
-
   .modal-content {
-    background: rgba(15, 23, 42, 0.92);
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.92), rgba(51, 65, 85, 0.92));
     border: 1px solid rgba(148, 163, 184, 0.35);
     color: #f8fafc;
     box-shadow: 0 28px 60px rgba(2, 6, 23, 0.55);
@@ -535,18 +470,6 @@ onMounted(async () => {
 
   .modal-content .form-group label {
     color: #cbd5f5;
-  }
-
-  .modal-content .form-group input,
-  .modal-content .form-group textarea {
-    background: rgba(30, 41, 59, 0.85);
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    color: #f8fafc;
-  }
-
-  .modal-content .form-group textarea::placeholder,
-  .modal-content .form-group input::placeholder {
-    color: rgba(148, 163, 184, 0.8);
   }
 }
 </style>
