@@ -19,7 +19,7 @@ from .routers import auth as auth_router
 from .routers import projects as projects_router
 from .routers import worklogs as worklogs_router
 from .routers import users as users_router
-from .auth import get_password_hash
+from .routers.auth import get_password_hash
 
 app = FastAPI(title="Worklog API", version="2.0.0")
 
