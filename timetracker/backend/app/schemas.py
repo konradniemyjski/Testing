@@ -3,7 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field, constr
+
+
+LoginIdentifier = constr(strip_whitespace=True, min_length=1, max_length=255)
 
 
 class Token(BaseModel):
@@ -16,8 +19,8 @@ class TokenData(BaseModel):
 
 
 class UserBase(BaseModel):
-    email: EmailStr
-    full_name: Optional[str] = None
+    email: LoginIdentifier
+    full_name: Optional[str] = Field(default=None, max_length=255)
     role: str = Field(default="user", pattern=r"^(user|admin)$")
 
 
@@ -32,6 +35,10 @@ class UserRead(UserBase):
 
     class Config:
         from_attributes = True
+
+
+class UserRoleUpdate(BaseModel):
+    role: str = Field(pattern=r"^(user|admin)$")
 
 
 class ProjectBase(BaseModel):

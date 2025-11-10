@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 
 from fastapi import FastAPI
@@ -7,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import models to register SQLAlchemy mappings before table creation
 from . import models  # noqa: F401
-from .db import Base, engine
+from .db import Base, SessionLocal, engine
 from .schema_utils import (
     ensure_project_code_column,
     ensure_all_columns,
@@ -20,6 +18,8 @@ from .schema_utils import (
 from .routers import auth as auth_router
 from .routers import projects as projects_router
 from .routers import worklogs as worklogs_router
+from .routers import users as users_router
+from .auth import get_password_hash
 
 app = FastAPI(title="Worklog API", version="2.0.0")
 
@@ -60,6 +60,32 @@ app.add_middleware(
 )
 
 
+def ensure_initial_admin_user() -> None:
+    login = os.getenv("INITIAL_ADMIN_LOGIN", "admin").strip() or "admin"
+    password = os.getenv("INITIAL_ADMIN_PASSWORD", "admin")
+
+    with SessionLocal() as session:
+        existing_user = (
+            session.query(models.User).filter(models.User.email == login).first()
+        )
+
+        if existing_user:
+            if existing_user.role != "admin":
+                existing_user.role = "admin"
+                session.add(existing_user)
+                session.commit()
+            return
+
+        admin_user = models.User(
+            email=login,
+            full_name="Administrator",
+            role="admin",
+            hashed_password=get_password_hash(password),
+        )
+        session.add(admin_user)
+        session.commit()
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
@@ -70,6 +96,7 @@ def on_startup() -> None:
     ensure_worklog_meals_served_column(engine)
     ensure_worklog_overnight_stays_column(engine)
     ensure_all_columns(engine)
+    ensure_initial_admin_user()
 
 
 @app.get("/health", tags=["health"])
@@ -80,3 +107,4 @@ def read_health() -> dict[str, str]:
 app.include_router(auth_router.router)
 app.include_router(projects_router.router)
 app.include_router(worklogs_router.router)
+app.include_router(users_router.router)
