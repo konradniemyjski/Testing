@@ -119,19 +119,24 @@ async def register_user(
 ):
     """Register a new user"""
     # Check if user with this email already exists
-    existing_user = db.query(models.User).filter(models.User.email == user_in.email).first()
+    normalized_email = user_in.email.strip()
+    existing_user = (
+        db.query(models.User)
+        .filter(models.User.email == normalized_email)
+        .first()
+    )
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email already exists"
         )
-    
+
     # Create new user with hashed password
     hashed_password = get_password_hash(user_in.password)
     db_user = models.User(
-        email=user_in.email,
-        full_name=user_in.full_name,
-        role=user_in.role,
+        email=normalized_email,
+        full_name=user_in.full_name.strip() if user_in.full_name else None,
+        role="user",
         hashed_password=hashed_password,
     )
     db.add(db_user)
