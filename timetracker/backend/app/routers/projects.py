@@ -1,122 +1,87 @@
-from __future__ import annotations
-
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List
 
-from .. import auth, models, schemas
+from .. import models, schemas
 from ..db import get_db
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
-@router.get("/", response_model=list[schemas.ProjectRead])
-async def list_projects(
-    db: Annotated[Session, Depends(get_db)],
-    skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=50, ge=1, le=100),
+@router.get("/", response_model=List[schemas.ProjectRead])
+def get_projects(
+    db: Session = Depends(get_db),
 ):
-    return (
-        db.query(models.Project)
-        .order_by(models.Project.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
-
-
-@router.post("/", response_model=schemas.ProjectRead, status_code=status.HTTP_201_CREATED)
-async def create_project(
-    project_in: schemas.ProjectCreate,
-    db: Annotated[Session, Depends(get_db)],
-    _: Annotated[models.User, Depends(auth.get_current_active_user)],
-):
-    project_data = project_in.model_dump()
-    project_data["code"] = project_data["code"].strip()
-    project_data["name"] = project_data["name"].strip()
-    if project_data.get("description"):
-        project_data["description"] = project_data["description"].strip() or None
-
-    if not project_data["code"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project code cannot be empty")
-    if not project_data["name"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name cannot be empty")
-
-    existing_name = db.query(models.Project).filter(models.Project.name == project_data["name"]).first()
-    if existing_name:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name already in use")
-
-    existing_code = db.query(models.Project).filter(models.Project.code == project_data["code"]).first()
-    if existing_code:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project code already in use")
-    project = models.Project(**project_data)
-    db.add(project)
-    db.commit()
-    db.refresh(project)
-    return project
+    """Get all projects"""
+    projects = db.query(models.Project).all()
+    return projects
 
 
 @router.get("/{project_id}", response_model=schemas.ProjectRead)
-async def read_project(project_id: int, db: Annotated[Session, Depends(get_db)]):
-    project = db.get(models.Project, project_id)
+def get_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get single project by ID"""
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+
+@router.post("/", response_model=schemas.ProjectRead, status_code=status.HTTP_201_CREATED)
+def create_project(
+    project: schemas.ProjectCreate,
+    db: Session = Depends(get_db),
+):
+    """Create a new project"""
+    db_project = models.Project(**project.dict())
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
 
 
 @router.put("/{project_id}", response_model=schemas.ProjectRead)
-async def update_project(
+def update_project(
     project_id: int,
-    project_in: schemas.ProjectUpdate,
-    db: Annotated[Session, Depends(get_db)],
-    _: Annotated[models.User, Depends(auth.get_current_active_admin)],
+    project_update: schemas.ProjectCreate,
+    db: Session = Depends(get_db),
 ):
-    project = db.get(models.Project, project_id)
-    if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    update_data = project_in.model_dump(exclude_unset=True)
-    if "name" in update_data:
-        update_data["name"] = update_data["name"].strip() if update_data["name"] is not None else None
-        if update_data["name"] == "":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name cannot be empty")
-        existing = (
-            db.query(models.Project)
-            .filter(models.Project.name == update_data["name"], models.Project.id != project_id)
-            .first()
-        )
-        if existing:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name already in use")
-    if "code" in update_data:
-        update_data["code"] = update_data["code"].strip() if update_data["code"] is not None else None
-        if update_data["code"] == "":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project code cannot be empty")
-        existing_code = (
-            db.query(models.Project)
-            .filter(models.Project.code == update_data["code"], models.Project.id != project_id)
-            .first()
-        )
-        if existing_code:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project code already in use")
-    if "description" in update_data and update_data["description"] is not None:
-        update_data["description"] = update_data["description"].strip() or None
-    for field, value in update_data.items():
-        setattr(project, field, value)
-    db.add(project)
+    """Update an existing project"""
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Update project fields
+    for key, value in project_update.dict().items():
+        setattr(db_project, key, value)
+    
     db.commit()
-    db.refresh(project)
-    return project
+    db.refresh(db_project)
+    return db_project
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_project(
+def delete_project(
     project_id: int,
-    db: Annotated[Session, Depends(get_db)],
-    _: Annotated[models.User, Depends(auth.get_current_active_admin)],
+    db: Session = Depends(get_db),
 ):
-    project = db.get(models.Project, project_id)
-    if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    db.delete(project)
+    """Delete a project"""
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Check if project has any worklogs
+    worklogs_count = db.query(models.WorkLog).filter(models.WorkLog.project_id == project_id).count()
+    if worklogs_count > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nie można usunąć budowy z {worklogs_count} powiązanymi wpisami pracy"
+        )
+    
+    db.delete(db_project)
     db.commit()
     return None
