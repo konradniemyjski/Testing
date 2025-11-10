@@ -172,6 +172,8 @@ def _ensure_worklog_numeric_column(
     enforce_not_null: bool = True,
 ) -> None:
     """Ensure a numeric ``worklogs`` column exists with a populated default."""
+def ensure_worklog_hours_worked_column(engine: Engine) -> None:
+    """Ensure the ``worklogs.hours_worked`` column exists and is populated."""
 
     inspector = inspect(engine)
     if "worklogs" not in inspector.get_table_names():
@@ -259,3 +261,28 @@ def ensure_worklog_absences_column(engine: Engine) -> None:
         column_type_by_dialect={"sqlite": "INTEGER", "default": "INTEGER"},
         default_value=0,
     )
+    if "hours_worked" in columns:
+        return
+
+    dialect = engine.dialect.name
+
+    if dialect == "sqlite":
+        column_type = "FLOAT"
+    else:
+        column_type = "DOUBLE PRECISION"
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(f"ALTER TABLE worklogs ADD COLUMN hours_worked {column_type}")
+        )
+        connection.execute(
+            text(
+                "UPDATE worklogs SET hours_worked = 8 "
+                "WHERE hours_worked IS NULL"
+            )
+        )
+
+        if dialect == "postgresql":
+            connection.execute(
+                text("ALTER TABLE worklogs ALTER COLUMN hours_worked SET NOT NULL")
+            )
