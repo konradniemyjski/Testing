@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-
 from sqlalchemy import Engine, inspect, text
+
 
 
 def _slugify(value: str, *, max_length: int) -> str:
@@ -261,8 +261,11 @@ def ensure_worklog_absences_column(engine: Engine) -> None:
         column_type_by_dialect={"sqlite": "INTEGER", "default": "INTEGER"},
         default_value=0,
     )
+    inspector = inspect(engine)
+    columns = inspector.get_columns('worklog_absences')  # Ta linia prawdopodobnie brakuje
+    
     if "hours_worked" in columns:
-        return
+        # reszta kodu...
 
     dialect = engine.dialect.name
 
