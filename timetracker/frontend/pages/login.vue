@@ -6,8 +6,8 @@
 
       <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <label for="email">Adres e-mail</label>
-          <input id="email" v-model="form.email" type="email" placeholder="twoj@przyklad.pl" required />
+          <label for="email">Login</label>
+          <input id="email" v-model="form.email" type="text" placeholder="np. twoj@przyklad.pl" required />
         </div>
         <div class="form-group">
           <label for="password">Hasło</label>
@@ -43,7 +43,7 @@ const error = ref('')
 
 async function handleLogin() {
   if (!form.email || !form.password) {
-    error.value = 'Adres e-mail i hasło są wymagane.'
+    error.value = 'Login i hasło są wymagane.'
     return
   }
 

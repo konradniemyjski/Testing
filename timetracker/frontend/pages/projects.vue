@@ -377,6 +377,7 @@ function goToDashboard() {
 }
 
 onMounted(async () => {
+  userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
     router.replace('/login')
     return
