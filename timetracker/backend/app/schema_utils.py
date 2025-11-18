@@ -294,7 +294,20 @@ def ensure_all_columns(engine):
     # IMPORTANT: Run this FIRST before other column checks
     ensure_hours_column_migration(engine)
     
-    ensure_worklog_absences_column(engine)
+    # Ensure all project columns
+    ensure_project_code_column(engine)
+    
+    # Ensure all worklog columns
+    ensure_worklog_site_code_column(engine)
+    ensure_worklog_employee_count_column(engine)
+    ensure_worklog_hours_worked_column(engine)
+    ensure_worklog_meals_served_column(engine)
+    ensure_worklog_overnight_stays_column(engine)
     ensure_worklogs_columns(engine)
+    
+    # Ensure worklog_absences columns (if that table exists)
+    ensure_worklog_absences_column(engine)
+    
     logger.info("Column check complete")
+
 

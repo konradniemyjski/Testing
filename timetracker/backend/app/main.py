@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,22 +7,51 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import models to register SQLAlchemy mappings before table creation
 from . import models  # noqa: F401
 from .db import Base, SessionLocal, engine
-from .schema_utils import (
-    ensure_project_code_column,
-    ensure_all_columns,
-    ensure_worklog_employee_count_column,
-    ensure_worklog_hours_worked_column,
-    ensure_worklog_meals_served_column,
-    ensure_worklog_overnight_stays_column,
-    ensure_worklog_site_code_column,
-)
+from .schema_utils import ensure_all_columns
 from .auth import get_password_hash
 from .routers import auth as auth_router
 from .routers import projects as projects_router
 from .routers import worklogs as worklogs_router
 from .routers import users as users_router
 
-app = FastAPI(title="Worklog API", version="2.0.0")
+
+def ensure_initial_admin_user() -> None:
+    login = os.getenv("INITIAL_ADMIN_LOGIN", "admin").strip() or "admin"
+    password = os.getenv("INITIAL_ADMIN_PASSWORD", "admin")
+
+    with SessionLocal() as session:
+        existing_user = (
+            session.query(models.User).filter(models.User.email == login).first()
+        )
+
+        if existing_user:
+            if existing_user.role != "admin":
+                existing_user.role = "admin"
+                session.add(existing_user)
+                session.commit()
+            return
+
+        admin_user = models.User(
+            email=login,
+            full_name="Administrator",
+            role="admin",
+            hashed_password=get_password_hash(password),
+        )
+        session.add(admin_user)
+        session.commit()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    Base.metadata.create_all(bind=engine)
+    ensure_all_columns(engine)
+    ensure_initial_admin_user()
+    yield
+    # Shutdown (if needed in the future)
+
+
+app = FastAPI(title="Worklog API", version="2.0.0", lifespan=lifespan)
 
 default_allowed_origins = [
     "http://localhost",
@@ -58,45 +88,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-def ensure_initial_admin_user() -> None:
-    login = os.getenv("INITIAL_ADMIN_LOGIN", "admin").strip() or "admin"
-    password = os.getenv("INITIAL_ADMIN_PASSWORD", "admin")
-
-    with SessionLocal() as session:
-        existing_user = (
-            session.query(models.User).filter(models.User.email == login).first()
-        )
-
-        if existing_user:
-            if existing_user.role != "admin":
-                existing_user.role = "admin"
-                session.add(existing_user)
-                session.commit()
-            return
-
-        admin_user = models.User(
-            email=login,
-            full_name="Administrator",
-            role="admin",
-            hashed_password=get_password_hash(password),
-        )
-        session.add(admin_user)
-        session.commit()
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
-    ensure_project_code_column(engine)
-    ensure_worklog_site_code_column(engine)
-    ensure_worklog_employee_count_column(engine)
-    ensure_worklog_hours_worked_column(engine)
-    ensure_worklog_meals_served_column(engine)
-    ensure_worklog_overnight_stays_column(engine)
-    ensure_all_columns(engine)
-    ensure_initial_admin_user()
 
 
 @app.get("/health", tags=["health"])

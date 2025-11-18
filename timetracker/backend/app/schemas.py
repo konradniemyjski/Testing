@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Annotated, Optional
 
-from pydantic import BaseModel, Field, constr
+from pydantic import BaseModel, Field, StringConstraints
 
 
-LoginIdentifier = constr(strip_whitespace=True, min_length=1, max_length=255)
+LoginIdentifier = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
 
 
 class Token(BaseModel):
