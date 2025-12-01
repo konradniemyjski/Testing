@@ -212,9 +212,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useApi } from '~/composables/useApi'
-<<<<<<< ours
-import { useDictionaryStore } from '~/stores/dictionaries'
+  import { useApi } from '~/composables/useApi'
+  import { useDictionaryStore } from '~/stores/dictionaries'
 =======
 import { useDictionaryStore, type AccommodationCompany, type CateringCompany, type TeamMember } from '~/stores/dictionaries'
 >>>>>>> theirs
