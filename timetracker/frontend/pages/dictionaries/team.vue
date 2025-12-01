@@ -59,15 +59,17 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useUserStore } from '~/stores/user'
-import { useDictionaryStore } from '~/stores/dictionaries'
+
+type TeamMember = {
+  id: number
+  name: string
+}
 
 const userStore = useUserStore()
-const dictionaryStore = useDictionaryStore()
 const router = useRouter()
 const canManageUsers = computed(() => userStore.profile?.role === 'admin')
-const isAdmin = computed(() => userStore.profile?.role === 'admin')
 
-const teamMembers = ref(dictionaryStore.teamMembers)
+const teamMembers = ref<TeamMember[]>([])
 const form = reactive({
   name: ''
 })
@@ -88,16 +90,17 @@ function addMember() {
     return
   }
 
-  dictionaryStore.addTeamMember({ name })
-  teamMembers.value = dictionaryStore.teamMembers
+  teamMembers.value.push({
+    id: Date.now(),
+    name
+  })
 
   form.name = ''
   successMessage.value = 'Dodano osobę do słownika zespołu.'
 }
 
 function removeMember(id: number) {
-  dictionaryStore.removeTeamMember(id)
-  teamMembers.value = dictionaryStore.teamMembers
+  teamMembers.value = teamMembers.value.filter((member) => member.id !== id)
 }
 
 function handleLogout() {
@@ -107,16 +110,8 @@ function handleLogout() {
 
 onMounted(() => {
   userStore.hydrateFromStorage()
-  dictionaryStore.hydrateFromStorage()
-  teamMembers.value = dictionaryStore.teamMembers
-
   if (!userStore.isAuthenticated) {
     router.replace('/login')
-    return
-  }
-
-  if (!isAdmin.value) {
-    router.replace('/dashboard')
   }
 })
 </script>

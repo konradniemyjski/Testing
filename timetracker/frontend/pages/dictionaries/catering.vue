@@ -71,15 +71,18 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useUserStore } from '~/stores/user'
-import { useDictionaryStore } from '~/stores/dictionaries'
+
+type CateringCompany = {
+  id: number
+  taxId: string
+  name: string
+}
 
 const userStore = useUserStore()
-const dictionaryStore = useDictionaryStore()
 const router = useRouter()
 const canManageUsers = computed(() => userStore.profile?.role === 'admin')
-const isAdmin = computed(() => userStore.profile?.role === 'admin')
 
-const companies = ref(dictionaryStore.cateringCompanies)
+const companies = ref<CateringCompany[]>([])
 const form = reactive({
   taxId: '',
   name: ''
@@ -102,8 +105,11 @@ function addCompany() {
     return
   }
 
-  dictionaryStore.addCateringCompany({ taxId, name })
-  companies.value = dictionaryStore.cateringCompanies
+  companies.value.push({
+    id: Date.now(),
+    taxId,
+    name
+  })
 
   form.taxId = ''
   form.name = ''
@@ -111,8 +117,7 @@ function addCompany() {
 }
 
 function removeCompany(id: number) {
-  dictionaryStore.removeCateringCompany(id)
-  companies.value = dictionaryStore.cateringCompanies
+  companies.value = companies.value.filter((company) => company.id !== id)
 }
 
 function handleLogout() {
@@ -122,16 +127,8 @@ function handleLogout() {
 
 onMounted(() => {
   userStore.hydrateFromStorage()
-  dictionaryStore.hydrateFromStorage()
-  companies.value = dictionaryStore.cateringCompanies
-
   if (!userStore.isAuthenticated) {
     router.replace('/login')
-    return
-  }
-
-  if (!isAdmin.value) {
-    router.replace('/dashboard')
   }
 })
 </script>

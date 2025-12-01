@@ -4,7 +4,7 @@
     <div class="card">
       <header class="page-header">
         <div>
-          <h1>Administracja</h1>
+          <h1>Słowniki firm i zespołu</h1>
           <p class="text-muted">
             Dodaj lub uzupełnij podstawowe dane wykorzystywane podczas rozliczeń i raportowania.
           </p>
@@ -51,7 +51,6 @@ const userStore = useUserStore()
 const router = useRouter()
 
 const canManageUsers = computed(() => userStore.profile?.role === 'admin')
-const isAdmin = computed(() => userStore.profile?.role === 'admin')
 
 function handleLogout() {
   userStore.clear()
@@ -62,11 +61,6 @@ onMounted(() => {
   userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
     router.replace('/login')
-    return
-  }
-
-  if (!isAdmin.value) {
-    router.replace('/dashboard')
   }
 })
 </script>
