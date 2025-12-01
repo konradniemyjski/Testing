@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { useApi } from '~/composables/useApi'
 
+const STORAGE_KEY = 'worklog.dictionaries'
+
 export type CateringCompany = {
   id: number
   tax_id: string
@@ -33,6 +35,26 @@ export const useDictionaryStore = defineStore('dictionaries', {
     loaded: false
   }),
   actions: {
+    hydrateFromStorage() {
+      if (this.loaded || !process.client) {
+        return
+      }
+
+      const cached = window.localStorage.getItem(STORAGE_KEY)
+      if (!cached) {
+        return
+      }
+
+      try {
+        const parsed = JSON.parse(cached) as Omit<DictionaryState, 'loaded'>
+        this.cateringCompanies = parsed.cateringCompanies
+        this.accommodationCompanies = parsed.accommodationCompanies
+        this.teamMembers = parsed.teamMembers
+        this.loaded = true
+      } catch {
+        // ignore cache parsing issues and fall back to fetching
+      }
+    },
     async fetchDictionaries(force = false) {
       if (this.loaded && !force) {
         return
@@ -47,6 +69,15 @@ export const useDictionaryStore = defineStore('dictionaries', {
       this.accommodationCompanies = accommodation
       this.teamMembers = team
       this.loaded = true
+
+      if (process.client) {
+        const payload = {
+          cateringCompanies: this.cateringCompanies,
+          accommodationCompanies: this.accommodationCompanies,
+          teamMembers: this.teamMembers
+        }
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+      }
     },
     async createCateringCompany(payload: Omit<CateringCompany, 'id'>) {
       const api = useApi()
