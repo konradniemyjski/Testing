@@ -240,6 +240,40 @@ def ensure_worklog_overnight_stays_column(engine):
         except SQLAlchemyError as e:
             logger.error(f"Error adding overnight_stays column: {e}")
 
+
+def ensure_worklog_dictionary_columns(engine):
+    """Ensure the worklogs table has foreign keys for dictionary tables."""
+    inspector = inspect(engine)
+
+    if "worklogs" not in inspector.get_table_names():
+        logger.info("Table worklogs doesn't exist yet, skipping dictionary column check")
+        return
+
+    columns = [col["name"] for col in inspector.get_columns("worklogs")]
+    dialect = engine.dialect.name
+    column_type = "INTEGER" if dialect in {"postgresql", "mysql"} else "INTEGER"
+
+    for column_name in [
+        "team_member_id",
+        "accommodation_company_id",
+        "catering_company_id",
+    ]:
+        if column_name in columns:
+            continue
+
+        logger.info(f"Adding {column_name} column to worklogs table")
+        alter_sql = text(
+            f"ALTER TABLE worklogs ADD COLUMN {column_name} {column_type}"
+        )
+
+        try:
+            with engine.connect() as conn:
+                conn.execute(alter_sql)
+                conn.commit()
+            logger.info(f"Successfully added {column_name} column to worklogs")
+        except SQLAlchemyError as e:
+            logger.error(f"Error adding {column_name} column: {e}")
+
 def ensure_hours_column_migration(engine):
     """Migrate 'hours' column to 'hours_worked' or make it nullable."""
     inspector = inspect(engine)
@@ -303,6 +337,7 @@ def ensure_all_columns(engine):
     ensure_worklog_hours_worked_column(engine)
     ensure_worklog_meals_served_column(engine)
     ensure_worklog_overnight_stays_column(engine)
+    ensure_worklog_dictionary_columns(engine)
     ensure_worklogs_columns(engine)
     
     # Ensure worklog_absences columns (if that table exists)
