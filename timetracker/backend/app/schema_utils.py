@@ -274,6 +274,81 @@ def ensure_worklog_dictionary_columns(engine):
         except SQLAlchemyError as e:
             logger.error(f"Error adding {column_name} column: {e}")
 
+
+def ensure_team_members_columns(engine):
+    """Ensure the team_members table includes team_id and role columns."""
+    inspector = inspect(engine)
+
+    if "team_members" not in inspector.get_table_names():
+        logger.info("Table team_members doesn't exist yet, skipping column check")
+        return
+
+    columns = [col["name"] for col in inspector.get_columns("team_members")]
+    dialect = engine.dialect.name
+
+    if "team_id" not in columns:
+        logger.info("Adding team_id column to team_members table")
+        alter_sql = text("ALTER TABLE team_members ADD COLUMN team_id INTEGER")
+
+        try:
+            with engine.connect() as conn:
+                conn.execute(alter_sql)
+                conn.commit()
+            logger.info("Successfully added team_id column")
+        except SQLAlchemyError as e:
+            logger.error(f"Error adding team_id column: {e}")
+
+    if "role" not in columns:
+        logger.info("Adding role column to team_members table")
+        if dialect == "postgresql":
+            alter_sql = text(
+                "ALTER TABLE team_members ADD COLUMN role VARCHAR(50) DEFAULT 'Pracownik'"
+            )
+        elif dialect == "mysql":
+            alter_sql = text(
+                "ALTER TABLE team_members ADD COLUMN role VARCHAR(50) DEFAULT 'Pracownik'"
+            )
+        else:  # sqlite
+            alter_sql = text(
+                "ALTER TABLE team_members ADD COLUMN role TEXT DEFAULT 'Pracownik'"
+            )
+
+        try:
+            with engine.connect() as conn:
+                conn.execute(alter_sql)
+                conn.commit()
+            logger.info("Successfully added role column")
+        except SQLAlchemyError as e:
+            logger.error(f"Error adding role column: {e}")
+
+    # Attach unassigned members to a default team if possible
+    try:
+        with engine.connect() as conn:
+            team_row = conn.execute(
+                text("SELECT id FROM teams ORDER BY id ASC LIMIT 1")
+            ).first()
+
+            if team_row is None:
+                conn.execute(
+                    text(
+                        "INSERT INTO teams (name, created_at, updated_at) "
+                        "VALUES ('Zespół', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+                    )
+                )
+                conn.commit()
+                team_row = conn.execute(
+                    text("SELECT id FROM teams ORDER BY id ASC LIMIT 1")
+                ).first()
+
+            if team_row:
+                conn.execute(
+                    text("UPDATE team_members SET team_id = :team_id WHERE team_id IS NULL"),
+                    {"team_id": team_row[0]},
+                )
+                conn.commit()
+    except SQLAlchemyError as e:
+        logger.error(f"Error assigning default team_id to members: {e}")
+
 def ensure_hours_column_migration(engine):
     """Migrate 'hours' column to 'hours_worked' or make it nullable."""
     inspector = inspect(engine)
@@ -338,6 +413,7 @@ def ensure_all_columns(engine):
     ensure_worklog_meals_served_column(engine)
     ensure_worklog_overnight_stays_column(engine)
     ensure_worklog_dictionary_columns(engine)
+    ensure_team_members_columns(engine)
     ensure_worklogs_columns(engine)
     
     # Ensure worklog_absences columns (if that table exists)
