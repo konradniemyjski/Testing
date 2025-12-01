@@ -67,6 +67,7 @@
               <tr>
                 <th>Imię i nazwisko</th>
                 <th>Rola</th>
+                <th>Zespół</th>
                 <th>Akcje</th>
               </tr>
             </thead>
@@ -84,6 +85,9 @@
                   <select v-model="editableMembers[member.id].role">
                     <option v-for="role in roleOptions" :key="role" :value="role">{{ role }}</option>
                   </select>
+                </td>
+                <td>
+                  <span class="text-muted">{{ member.team_id ? teamLabel : '—' }}</span>
                 </td>
                 <td class="member-actions">
                   <button
@@ -128,6 +132,7 @@ const isAdmin = computed(() => userStore.profile?.role === 'admin')
 
 const members = computed(() => dictionaryStore.teamMembers)
 const team = computed(() => dictionaryStore.team)
+const teamLabel = computed(() => team.value?.name || '—')
 
 const teamName = ref('')
 const teamError = ref('')

@@ -74,7 +74,7 @@ allow_origin_regex_env = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
 allow_origin_regex = (
     allow_origin_regex_env.strip()
     if allow_origin_regex_env and allow_origin_regex_env.strip()
-    else r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+    else r"https?://.*"
 )
 
 if allowed_origins == ["*"]:
