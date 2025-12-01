@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Annotated, Optional
 
 from pydantic import BaseModel, Field, StringConstraints
@@ -134,16 +135,49 @@ class AccommodationCompanyRead(AccommodationCompanyBase):
         from_attributes = True
 
 
+class TeamMemberRole(str, Enum):
+    worker = "Pracownik"
+    foreman = "Brygadzista"
+
+
 class TeamMemberBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
+    role: TeamMemberRole = Field(default=TeamMemberRole.worker)
+    team_id: int | None = Field(default=None)
 
 
 class TeamMemberCreate(TeamMemberBase):
     pass
 
 
+class TeamMemberUpdate(TeamMemberBase):
+    pass
+
+
 class TeamMemberRead(TeamMemberBase):
     id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TeamBase(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+
+
+class TeamCreate(TeamBase):
+    pass
+
+
+class TeamUpdate(TeamBase):
+    pass
+
+
+class TeamRead(TeamBase):
+    id: int
+    members: list[TeamMemberRead]
     created_at: datetime
     updated_at: datetime
 
