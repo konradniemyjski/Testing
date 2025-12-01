@@ -287,6 +287,7 @@ const roleLabel = computed(() => {
 })
 
 const teamMembers = computed(() => dictionaryStore.teamMembers)
+const teamName = computed(() => dictionaryStore.team?.name || '')
 const accommodationCompanies = computed(() => dictionaryStore.accommodationCompanies)
 const cateringCompanies = computed(() => dictionaryStore.cateringCompanies)
 
@@ -328,7 +329,11 @@ function formatAuthor(entry: WorkLog) {
 }
 
 function formatTeam(entry: WorkLog) {
-  return entry.team_member?.name || findTeamMember(entry.team_member_id)?.name || '—'
+  const memberName = entry.team_member?.name || findTeamMember(entry.team_member_id)?.name
+  if (!memberName) {
+    return '—'
+  }
+  return teamName.value ? `${memberName} (${teamName.value})` : memberName
 }
 
 function formatCatering(entry: WorkLog) {

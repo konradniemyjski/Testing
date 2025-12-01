@@ -21,6 +21,7 @@ The service listens on `http://localhost:8000` by default. Open `http://localhos
 | `JWT_SECRET` | `super-secret-change-me` | Secret used to sign JWT tokens. |
 | `JWT_EXPIRE_MINUTES` | `1440` | Expiration time (in minutes) for generated access tokens. |
 | `CORS_ALLOW_ORIGINS` | `http://localhost:3000,http://localhost:5173` | Comma separated list of origins allowed to call the API. |
+| `CORS_ALLOW_ORIGIN_REGEX` | `https?://.*` | Regex used to match allowed origins; set to `None` to disable regex matching. |
 
 ### Database migrations
 
