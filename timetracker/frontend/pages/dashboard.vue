@@ -313,6 +313,14 @@ const filteredTeamMembers = computed(() => {
   return teamMembers.value.filter((member) => member.team_id === selectedTeamId.value)
 })
 
+const selectedTeamId = ref<number | null>(null)
+const filteredTeamMembers = computed(() => {
+  if (selectedTeamId.value == null) {
+    return teamMembers.value
+  }
+  return teamMembers.value.filter((member) => member.team_id === selectedTeamId.value)
+})
+
 function findProject(id: number | null | undefined) {
   if (id == null) {
     return undefined
