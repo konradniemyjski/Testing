@@ -99,6 +99,10 @@ class CateringCompanyCreate(CateringCompanyBase):
     pass
 
 
+class CateringCompanyUpdate(CateringCompanyBase):
+    pass
+
+
 class CateringCompanyRead(CateringCompanyBase):
     id: int
     created_at: datetime
@@ -114,6 +118,10 @@ class AccommodationCompanyBase(BaseModel):
 
 
 class AccommodationCompanyCreate(AccommodationCompanyBase):
+    pass
+
+
+class AccommodationCompanyUpdate(AccommodationCompanyBase):
     pass
 
 
