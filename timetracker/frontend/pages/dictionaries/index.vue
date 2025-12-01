@@ -1,10 +1,18 @@
 <template>
+<<<<<<< ours
   <div class="container">
+=======
+  <div v-if="ready" class="container">
+>>>>>>> theirs
     <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header class="page-header">
         <div>
+<<<<<<< ours
           <h1>Słowniki firm i zespołu</h1>
+=======
+          <h1>Administracja</h1>
+>>>>>>> theirs
           <p class="text-muted">
             Dodaj lub uzupełnij podstawowe dane wykorzystywane podczas rozliczeń i raportowania.
           </p>
@@ -44,6 +52,7 @@
 </template>
 
 <script setup lang="ts">
+<<<<<<< ours
 import { computed, onMounted } from 'vue'
 import { useUserStore } from '~/stores/user'
 
@@ -51,6 +60,19 @@ const userStore = useUserStore()
 const router = useRouter()
 
 const canManageUsers = computed(() => userStore.profile?.role === 'admin')
+=======
+import { computed, onMounted, ref } from 'vue'
+import { useUserStore } from '~/stores/user'
+
+definePageMeta({ ssr: false })
+
+const userStore = useUserStore()
+const router = useRouter()
+const ready = ref(false)
+
+const canManageUsers = computed(() => userStore.profile?.role === 'admin')
+const isAdmin = computed(() => userStore.profile?.role === 'admin')
+>>>>>>> theirs
 
 function handleLogout() {
   userStore.clear()
@@ -61,7 +83,18 @@ onMounted(() => {
   userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
     router.replace('/login')
+<<<<<<< ours
   }
+=======
+    return
+  }
+
+  if (!isAdmin.value) {
+    router.replace('/dashboard')
+    return
+  }
+  ready.value = true
+>>>>>>> theirs
 })
 </script>
 

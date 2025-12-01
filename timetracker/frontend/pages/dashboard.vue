@@ -213,7 +213,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useApi } from '~/composables/useApi'
+<<<<<<< ours
 import { useDictionaryStore } from '~/stores/dictionaries'
+=======
+import { useDictionaryStore, type AccommodationCompany, type CateringCompany, type TeamMember } from '~/stores/dictionaries'
+>>>>>>> theirs
 import { useUserStore } from '~/stores/user'
 
 definePageMeta({ ssr: false })
@@ -400,6 +404,7 @@ async function handleCreate() {
   try {
     saving.value = true
     const trimmedSiteCode = form.site_code.trim()
+<<<<<<< ours
     const selectionSummary = [
       form.team_member_id ? `Zespół: ${findTeamMember(form.team_member_id)?.name}` : null,
       form.accommodation_company_id
@@ -408,12 +413,18 @@ async function handleCreate() {
       form.catering_company_id ? `Posiłki: ${findCateringCompany(form.catering_company_id)?.name}` : null
     ].filter(Boolean)
     const supplementalNotes = selectionSummary.length ? selectionSummary.join(' | ') : ''
+=======
+>>>>>>> theirs
     const userNotes = form.notes.trim()
     const payload = {
       ...form,
       site_code: trimmedSiteCode || findProject(form.project_id)?.code || '',
       date: new Date(form.date).toISOString(),
+<<<<<<< ours
       notes: [supplementalNotes, userNotes].filter(Boolean).join(' | ') || null
+=======
+      notes: userNotes || null
+>>>>>>> theirs
     }
     form.site_code = trimmedSiteCode || findProject(form.project_id)?.code || ''
     await api<WorkLog>('/worklogs/', {
