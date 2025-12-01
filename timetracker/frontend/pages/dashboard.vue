@@ -227,6 +227,7 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useDictionaryStore, type AccommodationCompany, type CateringCompany, type TeamMember } from '~/stores/dictionaries'
@@ -302,11 +303,15 @@ const roleLabel = computed(() => {
   return 'Użytkownik'
 })
 
-const teams = computed(() => dictionaryStore.teams)
-const teamMembers = computed(() => dictionaryStore.teamMembers)
-const teams = computed(() => dictionaryStore.teams)
-const accommodationCompanies = computed(() => dictionaryStore.accommodationCompanies)
-const cateringCompanies = computed(() => dictionaryStore.cateringCompanies)
+const { teams, teamMembers, accommodationCompanies, cateringCompanies } = storeToRefs(dictionaryStore)
+
+const selectedTeamId = ref<number | null>(null)
+const filteredTeamMembers = computed(() => {
+  if (selectedTeamId.value == null) {
+    return teamMembers.value
+  }
+  return teamMembers.value.filter((member) => member.team_id === selectedTeamId.value)
+})
 
 const selectedTeamId = ref<number | null>(null)
 const filteredTeamMembers = computed(() => {
