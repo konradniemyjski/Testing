@@ -18,6 +18,14 @@
         Zarządzaj budowami
       </button>
       <button
+        type="button"
+        class="nav-btn"
+        :class="{ 'nav-btn--active': isActive('/dictionaries') }"
+        @click="navigate('/dictionaries')"
+      >
+        Słowniki
+      </button>
+      <button
         v-if="userStore.profile?.role === 'admin'"
         type="button"
         class="nav-btn"
@@ -50,7 +58,7 @@ function navigate(path: string) {
 }
 
 function isActive(path: string) {
-  return route.path === path
+  return route.path === path || route.path.startsWith(`${path}/`)
 }
 </script>
 
