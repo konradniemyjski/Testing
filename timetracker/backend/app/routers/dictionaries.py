@@ -51,6 +51,35 @@ async def delete_catering_company(
     return None
 
 
+@router.put("/catering/{company_id}", response_model=schemas.CateringCompanyRead)
+async def update_catering_company(
+    company_id: int,
+    company_in: schemas.CateringCompanyUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_admin)],
+):
+    company = db.get(models.CateringCompany, company_id)
+    if not company:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono firmy")
+
+    existing = (
+        db.query(models.CateringCompany)
+        .filter(
+            models.CateringCompany.tax_id == company_in.tax_id.strip(),
+            models.CateringCompany.id != company_id,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Firma o tym NIP już istnieje")
+
+    company.tax_id = company_in.tax_id.strip()
+    company.name = company_in.name.strip()
+    db.commit()
+    db.refresh(company)
+    return company
+
+
 @router.get("/accommodation", response_model=list[schemas.AccommodationCompanyRead])
 async def list_accommodation_companies(
     db: Annotated[Session, Depends(get_db)],
@@ -95,6 +124,37 @@ async def delete_accommodation_company(
     db.delete(company)
     db.commit()
     return None
+
+
+@router.put(
+    "/accommodation/{company_id}", response_model=schemas.AccommodationCompanyRead
+)
+async def update_accommodation_company(
+    company_id: int,
+    company_in: schemas.AccommodationCompanyUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_admin)],
+):
+    company = db.get(models.AccommodationCompany, company_id)
+    if not company:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono firmy")
+
+    existing = (
+        db.query(models.AccommodationCompany)
+        .filter(
+            models.AccommodationCompany.tax_id == company_in.tax_id.strip(),
+            models.AccommodationCompany.id != company_id,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Firma o tym NIP już istnieje")
+
+    company.tax_id = company_in.tax_id.strip()
+    company.name = company_in.name.strip()
+    db.commit()
+    db.refresh(company)
+    return company
 
 
 @router.get("/team", response_model=list[schemas.TeamMemberRead])

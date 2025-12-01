@@ -53,12 +53,49 @@
             </thead>
             <tbody>
               <tr v-for="company in companies" :key="company.id">
-                <td>{{ company.tax_id }}</td>
-                <td>{{ company.name }}</td>
                 <td>
-                  <button class="secondary-btn" type="button" @click="removeCompany(company.id)">
-                    Usuń
-                  </button>
+                  <template v-if="editingCompanyId === company.id">
+                    <input
+                      v-model="editForm.taxId"
+                      type="text"
+                      required
+                      placeholder="np. 987-654-32-10"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ company.tax_id }}
+                  </template>
+                </td>
+                <td>
+                  <template v-if="editingCompanyId === company.id">
+                    <input
+                      v-model="editForm.name"
+                      type="text"
+                      required
+                      placeholder="np. Hotelowa Przystań Sp. z o.o."
+                    />
+                  </template>
+                  <template v-else>
+                    {{ company.name }}
+                  </template>
+                </td>
+                <td>
+                  <template v-if="editingCompanyId === company.id">
+                    <button class="primary-btn" type="button" :disabled="editSubmitting" @click="saveCompany(company.id)">
+                      {{ editSubmitting ? 'Zapisywanie…' : 'Zapisz' }}
+                    </button>
+                    <button class="secondary-btn" type="button" :disabled="editSubmitting" @click="cancelEdit">
+                      Anuluj
+                    </button>
+                  </template>
+                  <template v-else>
+                    <button class="secondary-btn" type="button" @click="startEdit(company)">
+                      Edytuj
+                    </button>
+                    <button class="secondary-btn" type="button" @click="removeCompany(company.id)">
+                      Usuń
+                    </button>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -72,7 +109,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useDictionaryStore } from '~/stores/dictionaries'
+import { useDictionaryStore, type AccommodationCompany } from '~/stores/dictionaries'
 import { useUserStore } from '~/stores/user'
 
 definePageMeta({ ssr: false })
@@ -89,10 +126,16 @@ const form = reactive({
   taxId: '',
   name: ''
 })
+const editForm = reactive({
+  taxId: '',
+  name: ''
+})
 const errorMessage = ref('')
 const successMessage = ref('')
 const submitting = ref(false)
+const editSubmitting = ref(false)
 const ready = ref(false)
+const editingCompanyId = ref<number | null>(null)
 
 function resetFeedback() {
   errorMessage.value = ''
@@ -129,6 +172,46 @@ async function addCompany() {
 
 async function removeCompany(id: number) {
   await dictionaryStore.deleteAccommodationCompany(id)
+}
+
+function startEdit(company: AccommodationCompany) {
+  resetFeedback()
+  editingCompanyId.value = company.id
+  editForm.taxId = company.tax_id
+  editForm.name = company.name
+}
+
+function cancelEdit() {
+  editingCompanyId.value = null
+  editForm.taxId = ''
+  editForm.name = ''
+}
+
+async function saveCompany(id: number) {
+  resetFeedback()
+  const taxId = editForm.taxId.trim()
+  const name = editForm.name.trim()
+
+  if (!taxId || !name) {
+    errorMessage.value = 'Podaj zarówno NIP, jak i nazwę firmy.'
+    return
+  }
+
+  if (!nipPattern.test(taxId)) {
+    errorMessage.value = 'NIP musi być w formacie 123-456-78-90 lub 123-45-67-890.'
+    return
+  }
+
+  try {
+    editSubmitting.value = true
+    await dictionaryStore.updateAccommodationCompany(id, { tax_id: taxId, name })
+    successMessage.value = 'Zaktualizowano firmę noclegową.'
+    cancelEdit()
+  } catch (error: any) {
+    errorMessage.value = error?.data?.detail || 'Nie udało się zaktualizować firmy.'
+  } finally {
+    editSubmitting.value = false
+  }
 }
 
 function handleLogout() {

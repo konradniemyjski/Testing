@@ -93,6 +93,17 @@ export const useDictionaryStore = defineStore('dictionaries', {
       await api(`/dictionaries/catering/${id}`, { method: 'DELETE' })
       this.cateringCompanies = this.cateringCompanies.filter((company) => company.id !== id)
     },
+    async updateCateringCompany(id: number, payload: Omit<CateringCompany, 'id'>) {
+      const api = useApi()
+      const updated = await api<CateringCompany>(`/dictionaries/catering/${id}`, {
+        method: 'PUT',
+        body: payload
+      })
+      this.cateringCompanies = this.cateringCompanies.map((company) =>
+        company.id === id ? updated : company
+      )
+      return updated
+    },
     async createAccommodationCompany(payload: Omit<AccommodationCompany, 'id'>) {
       const api = useApi()
       const created = await api<AccommodationCompany>('/dictionaries/accommodation', {
@@ -106,6 +117,17 @@ export const useDictionaryStore = defineStore('dictionaries', {
       const api = useApi()
       await api(`/dictionaries/accommodation/${id}`, { method: 'DELETE' })
       this.accommodationCompanies = this.accommodationCompanies.filter((company) => company.id !== id)
+    },
+    async updateAccommodationCompany(id: number, payload: Omit<AccommodationCompany, 'id'>) {
+      const api = useApi()
+      const updated = await api<AccommodationCompany>(`/dictionaries/accommodation/${id}`, {
+        method: 'PUT',
+        body: payload
+      })
+      this.accommodationCompanies = this.accommodationCompanies.map((company) =>
+        company.id === id ? updated : company
+      )
+      return updated
     },
     async createTeamMember(payload: Omit<TeamMember, 'id'>) {
       const api = useApi()
