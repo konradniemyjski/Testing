@@ -87,8 +87,64 @@ class ProjectRead(ProjectBase):
         from_attributes = True
 
 
+class CateringCompanyBase(BaseModel):
+    tax_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+
+
+class CateringCompanyCreate(CateringCompanyBase):
+    pass
+
+
+class CateringCompanyRead(CateringCompanyBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AccommodationCompanyBase(BaseModel):
+    tax_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+
+
+class AccommodationCompanyCreate(AccommodationCompanyBase):
+    pass
+
+
+class AccommodationCompanyRead(AccommodationCompanyBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TeamMemberBase(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+
+
+class TeamMemberCreate(TeamMemberBase):
+    pass
+
+
+class TeamMemberRead(TeamMemberBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class WorkLogBase(BaseModel):
     project_id: int
+    team_member_id: int | None = None
+    accommodation_company_id: int | None = None
+    catering_company_id: int | None = None
     date: datetime
     site_code: str = Field(min_length=1, max_length=50)
     employee_count: int = Field(ge=1, le=1000)
@@ -113,6 +169,9 @@ class WorkLogUpdate(BaseModel):
     overnight_stays: Optional[int] = Field(default=None, ge=0, le=2000)
     absences: Optional[int] = Field(default=None, ge=0, le=2000)
     notes: Optional[str] = Field(default=None, max_length=2000)
+    team_member_id: Optional[int] = None
+    accommodation_company_id: Optional[int] = None
+    catering_company_id: Optional[int] = None
 
 
 class WorkLogRead(WorkLogBase):
@@ -121,6 +180,9 @@ class WorkLogRead(WorkLogBase):
     created_at: datetime
     updated_at: datetime
     user: Optional[UserSummary] = None
+    team_member: Optional[TeamMemberRead] = None
+    accommodation_company: Optional[AccommodationCompanyRead] = None
+    catering_company: Optional[CateringCompanyRead] = None
 
     class Config:
         from_attributes = True
