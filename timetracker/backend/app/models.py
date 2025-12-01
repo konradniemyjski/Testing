@@ -46,6 +46,15 @@ class WorkLog(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    team_member_id: Mapped[int | None] = mapped_column(
+        ForeignKey("team_members.id", ondelete="SET NULL"), nullable=True
+    )
+    accommodation_company_id: Mapped[int | None] = mapped_column(
+        ForeignKey("accommodation_companies.id", ondelete="SET NULL"), nullable=True
+    )
+    catering_company_id: Mapped[int | None] = mapped_column(
+        ForeignKey("catering_companies.id", ondelete="SET NULL"), nullable=True
+    )
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     site_code: Mapped[str] = mapped_column(String(50), nullable=False)
     employee_count: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -57,3 +66,37 @@ class WorkLog(Base, TimestampMixin):
 
     user: Mapped[User] = relationship(back_populates="worklogs")
     project: Mapped[Project] = relationship(back_populates="worklogs")
+    team_member: Mapped["TeamMember" | None] = relationship(back_populates="worklogs")
+    accommodation_company: Mapped["AccommodationCompany" | None] = relationship(
+        back_populates="worklogs"
+    )
+    catering_company: Mapped["CateringCompany" | None] = relationship(back_populates="worklogs")
+
+
+class CateringCompany(Base, TimestampMixin):
+    __tablename__ = "catering_companies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    tax_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    worklogs: Mapped[list[WorkLog]] = relationship(back_populates="catering_company")
+
+
+class AccommodationCompany(Base, TimestampMixin):
+    __tablename__ = "accommodation_companies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    tax_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    worklogs: Mapped[list[WorkLog]] = relationship(back_populates="accommodation_company")
+
+
+class TeamMember(Base, TimestampMixin):
+    __tablename__ = "team_members"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+
+    worklogs: Mapped[list[WorkLog]] = relationship(back_populates="team_member")

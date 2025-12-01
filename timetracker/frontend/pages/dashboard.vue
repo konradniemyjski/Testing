@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div v-if="ready" class="container">
     <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
@@ -160,6 +160,9 @@
                 <th>Data</th>
                 <th>Kod budowy</th>
                 <th>Budowa</th>
+                <th>Zespół</th>
+                <th>Firma cateringowa</th>
+                <th>Firma noclegowa</th>
                 <th>Pracownicy</th>
                 <th>Łączna liczba godzin</th>
                 <th>Posiłki</th>
@@ -175,6 +178,9 @@
                 <td>{{ formatDate(entry.date) }}</td>
                 <td>{{ entry.site_code }}</td>
                 <td>{{ findProject(entry.project_id)?.name || '—' }}</td>
+                <td>{{ formatTeam(entry) }}</td>
+                <td>{{ formatCatering(entry) }}</td>
+                <td>{{ formatAccommodation(entry) }}</td>
                 <td>{{ entry.employee_count }}</td>
                 <td>{{ formatNumber(entry.hours_worked) }}</td>
                 <td>{{ entry.meals_served }}</td>
@@ -210,6 +216,8 @@ import { useApi } from '~/composables/useApi'
 import { useDictionaryStore } from '~/stores/dictionaries'
 import { useUserStore } from '~/stores/user'
 
+definePageMeta({ ssr: false })
+
 type Project = {
   id: number
   code: string
@@ -226,6 +234,9 @@ type WorkLogUser = {
 type WorkLog = {
   id: number
   project_id: number
+  team_member_id?: number | null
+  accommodation_company_id?: number | null
+  catering_company_id?: number | null
   date: string
   site_code: string
   employee_count: number
@@ -236,6 +247,9 @@ type WorkLog = {
   user_id: number
   notes?: string | null
   user?: WorkLogUser | null
+  team_member?: TeamMember | null
+  accommodation_company?: AccommodationCompany | null
+  catering_company?: CateringCompany | null
 }
 
 const router = useRouter()
@@ -247,6 +261,7 @@ const projects = ref<Project[]>([])
 const worklogs = ref<WorkLog[]>([])
 const saving = ref(false)
 const exporting = ref(false)
+const ready = ref(false)
 const form = reactive({
   project_id: null as number | null,
   date: new Date().toISOString().slice(0, 10),
@@ -310,6 +325,22 @@ function formatAuthor(entry: WorkLog) {
   const displayName = author?.full_name?.trim() || author?.email || 'Nieznany użytkownik'
   const id = author?.id ?? entry.user_id
   return `${displayName} (ID: ${id})`
+}
+
+function formatTeam(entry: WorkLog) {
+  return entry.team_member?.name || findTeamMember(entry.team_member_id)?.name || '—'
+}
+
+function formatCatering(entry: WorkLog) {
+  return entry.catering_company?.name || findCateringCompany(entry.catering_company_id)?.name || '—'
+}
+
+function formatAccommodation(entry: WorkLog) {
+  return (
+    entry.accommodation_company?.name ||
+    findAccommodationCompany(entry.accommodation_company_id)?.name ||
+    '—'
+  )
 }
 
 async function loadProjects() {
@@ -380,11 +411,11 @@ async function handleCreate() {
     const userNotes = form.notes.trim()
     const payload = {
       ...form,
-      site_code: trimmedSiteCode,
+      site_code: trimmedSiteCode || findProject(form.project_id)?.code || '',
       date: new Date(form.date).toISOString(),
       notes: [supplementalNotes, userNotes].filter(Boolean).join(' | ') || null
     }
-    form.site_code = trimmedSiteCode
+    form.site_code = trimmedSiteCode || findProject(form.project_id)?.code || ''
     await api<WorkLog>('/worklogs/', {
       method: 'POST',
       body: payload
@@ -435,7 +466,9 @@ onMounted(async () => {
     router.replace('/login')
     return
   }
+  await dictionaryStore.fetchDictionaries()
   await Promise.all([loadProjects(), loadWorklogs()])
+  ready.value = true
 })
 </script>
 

@@ -24,7 +24,13 @@ def _build_user_worklog_query(
     start_date: datetime | None,
     end_date: datetime | None,
 ):
-    query = db.query(models.WorkLog).options(joinedload(models.WorkLog.user))
+    query = (
+        db.query(models.WorkLog)
+        .options(joinedload(models.WorkLog.user))
+        .options(joinedload(models.WorkLog.team_member))
+        .options(joinedload(models.WorkLog.accommodation_company))
+        .options(joinedload(models.WorkLog.catering_company))
+    )
     if current_user.role != "admin":
         query = query.filter(models.WorkLog.user_id == current_user.id)
     if project_id is not None:
@@ -57,6 +63,17 @@ async def create_worklog(
     project = db.get(models.Project, worklog_in.project_id)
     if not project:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project does not exist")
+
+    if worklog_in.team_member_id is not None and not db.get(models.TeamMember, worklog_in.team_member_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Team member does not exist")
+    if worklog_in.accommodation_company_id is not None and not db.get(
+        models.AccommodationCompany, worklog_in.accommodation_company_id
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Accommodation company does not exist")
+    if worklog_in.catering_company_id is not None and not db.get(
+        models.CateringCompany, worklog_in.catering_company_id
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Catering company does not exist")
     worklog_data = worklog_in.model_dump()
     worklog_data["site_code"] = worklog_data["site_code"].strip()
     if project.code and not worklog_data["site_code"]:
@@ -85,6 +102,18 @@ async def update_worklog(
         project = db.get(models.Project, update_data["project_id"])
         if not project:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project does not exist")
+    if "team_member_id" in update_data and update_data["team_member_id"] is not None:
+        if not db.get(models.TeamMember, update_data["team_member_id"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Team member does not exist")
+    if (
+        "accommodation_company_id" in update_data
+        and update_data["accommodation_company_id"] is not None
+    ):
+        if not db.get(models.AccommodationCompany, update_data["accommodation_company_id"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Accommodation company does not exist")
+    if "catering_company_id" in update_data and update_data["catering_company_id"] is not None:
+        if not db.get(models.CateringCompany, update_data["catering_company_id"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Catering company does not exist")
     if "site_code" in update_data and update_data["site_code"] is not None:
         update_data["site_code"] = update_data["site_code"].strip()
     if "notes" in update_data and update_data["notes"] is not None:
@@ -120,10 +149,13 @@ async def export_worklogs(
         "Data",
         "Kod budowy",
         "Nazwa budowy",
+        "Członek zespołu",
         "Liczba pracowników",
         "Łączna liczba godzin",
         "Posiłki",
+        "Firma cateringowa",
         "Noclegi",
+        "Firma noclegowa",
         "Nieobecności",
         "Uwagi",
         "Autor",
@@ -138,15 +170,23 @@ async def export_worklogs(
             author_label = f"{display_name} (ID: {author.id})"
         else:
             author_label = f"ID: {worklog.user_id}"
+        team_member = worklog.team_member.name if worklog.team_member else ""
+        catering_company = worklog.catering_company.name if worklog.catering_company else ""
+        accommodation_company = (
+            worklog.accommodation_company.name if worklog.accommodation_company else ""
+        )
         sheet.append(
             [
                 worklog.date.date().isoformat(),
                 worklog.site_code,
                 project_name,
+                team_member,
                 worklog.employee_count,
                 float(worklog.hours_worked),
                 worklog.meals_served,
+                catering_company,
                 worklog.overnight_stays,
+                accommodation_company,
                 worklog.absences,
                 worklog.notes or "",
                 author_label,
