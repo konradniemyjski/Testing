@@ -66,11 +66,11 @@ class WorkLog(Base, TimestampMixin):
 
     user: Mapped[User] = relationship(back_populates="worklogs")
     project: Mapped[Project] = relationship(back_populates="worklogs")
-    team_member: Mapped[TeamMember | None] = relationship(back_populates="worklogs")
-    accommodation_company: Mapped[AccommodationCompany | None] = relationship(
+    team_member: Mapped["TeamMember" | None] = relationship(back_populates="worklogs")
+    accommodation_company: Mapped["AccommodationCompany" | None] = relationship(
         back_populates="worklogs"
     )
-    catering_company: Mapped[CateringCompany | None] = relationship(back_populates="worklogs")
+    catering_company: Mapped["CateringCompany" | None] = relationship(back_populates="worklogs")
 
 
 class CateringCompany(Base, TimestampMixin):
