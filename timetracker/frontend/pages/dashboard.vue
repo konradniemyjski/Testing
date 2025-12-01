@@ -89,11 +89,7 @@
               >
                 <option v-if="!cateringCompanies.length" disabled value="">Brak danych w słowniku</option>
                 <option v-for="company in cateringCompanies" :key="company.id" :value="company.id">
-<<<<<<< HEAD
                   {{ company.name }} ({{ company.tax_id }})
-=======
-                  {{ company.name }} ({{ company.taxId }})
->>>>>>> master
                 </option>
               </select>
             </div>
@@ -126,11 +122,7 @@
               >
                 <option v-if="!accommodationCompanies.length" disabled value="">Brak danych w słowniku</option>
                 <option v-for="company in accommodationCompanies" :key="company.id" :value="company.id">
-<<<<<<< HEAD
                   {{ company.name }} ({{ company.tax_id }})
-=======
-                  {{ company.name }} ({{ company.taxId }})
->>>>>>> master
                 </option>
               </select>
             </div>
@@ -220,16 +212,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-<<<<<<< HEAD
 import { useApi } from '~/composables/useApi'
 import { useDictionaryStore, type AccommodationCompany, type CateringCompany, type TeamMember } from '~/stores/dictionaries'
-=======
-  import { useApi } from '~/composables/useApi'
-  import { useDictionaryStore } from '~/stores/dictionaries'
-=======
-import { useDictionaryStore, type AccommodationCompany, type CateringCompany, type TeamMember } from '~/stores/dictionaries'
->>>>>>> theirs
->>>>>>> master
 import { useUserStore } from '~/stores/user'
 
 definePageMeta({ ssr: false })
@@ -416,9 +400,6 @@ async function handleCreate() {
   try {
     saving.value = true
     const trimmedSiteCode = form.site_code.trim()
-<<<<<<< HEAD
-=======
-<<<<<<< ours
     const selectionSummary = [
       form.team_member_id ? `Zespół: ${findTeamMember(form.team_member_id)?.name}` : null,
       form.accommodation_company_id
@@ -427,23 +408,12 @@ async function handleCreate() {
       form.catering_company_id ? `Posiłki: ${findCateringCompany(form.catering_company_id)?.name}` : null
     ].filter(Boolean)
     const supplementalNotes = selectionSummary.length ? selectionSummary.join(' | ') : ''
-=======
->>>>>>> theirs
->>>>>>> master
     const userNotes = form.notes.trim()
     const payload = {
       ...form,
       site_code: trimmedSiteCode || findProject(form.project_id)?.code || '',
       date: new Date(form.date).toISOString(),
-<<<<<<< HEAD
-      notes: userNotes || null
-=======
-<<<<<<< ours
       notes: [supplementalNotes, userNotes].filter(Boolean).join(' | ') || null
-=======
-      notes: userNotes || null
->>>>>>> theirs
->>>>>>> master
     }
     form.site_code = trimmedSiteCode || findProject(form.project_id)?.code || ''
     await api<WorkLog>('/worklogs/', {
