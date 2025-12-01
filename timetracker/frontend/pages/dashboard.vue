@@ -34,6 +34,20 @@
               <input id="siteCode" v-model="form.site_code" type="text" required />
             </div>
             <div class="form-group">
+              <label for="teamMember">Zespół</label>
+              <select
+                id="teamMember"
+                v-model.number="form.team_member_id"
+                :disabled="!teamMembers.length"
+                required
+              >
+                <option v-if="!teamMembers.length" disabled value="">Brak danych w słowniku</option>
+                <option v-for="member in teamMembers" :key="member.id" :value="member.id">
+                  {{ member.name }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
               <label for="employeeCount">Liczba pracowników</label>
               <input
                 id="employeeCount"
@@ -67,6 +81,19 @@
               />
             </div>
             <div class="form-group">
+              <label for="cateringCompany">Firma cateringowa</label>
+              <select
+                id="cateringCompany"
+                v-model.number="form.catering_company_id"
+                :disabled="!cateringCompanies.length"
+              >
+                <option v-if="!cateringCompanies.length" disabled value="">Brak danych w słowniku</option>
+                <option v-for="company in cateringCompanies" :key="company.id" :value="company.id">
+                  {{ company.name }} ({{ company.taxId }})
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
               <label for="overnightStays">Noclegi</label>
               <input
                 id="overnightStays"
@@ -85,6 +112,19 @@
                 min="0"
                 max="2000"
               />
+            </div>
+            <div class="form-group">
+              <label for="accommodationCompany">Firma noclegowa</label>
+              <select
+                id="accommodationCompany"
+                v-model.number="form.accommodation_company_id"
+                :disabled="!accommodationCompanies.length"
+              >
+                <option v-if="!accommodationCompanies.length" disabled value="">Brak danych w słowniku</option>
+                <option v-for="company in accommodationCompanies" :key="company.id" :value="company.id">
+                  {{ company.name }} ({{ company.taxId }})
+                </option>
+              </select>
             </div>
             <div class="form-group">
               <label for="notes">Uwagi</label>
@@ -167,6 +207,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useApi } from '~/composables/useApi'
+import { useDictionaryStore } from '~/stores/dictionaries'
 import { useUserStore } from '~/stores/user'
 
 type Project = {
@@ -199,6 +240,7 @@ type WorkLog = {
 
 const router = useRouter()
 const userStore = useUserStore()
+const dictionaryStore = useDictionaryStore()
 const api = useApi()
 
 const projects = ref<Project[]>([])
@@ -214,6 +256,9 @@ const form = reactive({
   meals_served: 0,
   overnight_stays: 0,
   absences: 0,
+  team_member_id: null as number | null,
+  accommodation_company_id: null as number | null,
+  catering_company_id: null as number | null,
   notes: ''
 })
 
@@ -226,11 +271,30 @@ const roleLabel = computed(() => {
   return 'Użytkownik'
 })
 
+const teamMembers = computed(() => dictionaryStore.teamMembers)
+const accommodationCompanies = computed(() => dictionaryStore.accommodationCompanies)
+const cateringCompanies = computed(() => dictionaryStore.cateringCompanies)
+
 function findProject(id: number | null | undefined) {
   if (id == null) {
     return undefined
   }
   return projects.value.find((project) => project.id === id)
+}
+
+function findTeamMember(id: number | null | undefined) {
+  if (id == null) return undefined
+  return teamMembers.value.find((member) => member.id === id)
+}
+
+function findAccommodationCompany(id: number | null | undefined) {
+  if (id == null) return undefined
+  return accommodationCompanies.value.find((company) => company.id === id)
+}
+
+function findCateringCompany(id: number | null | undefined) {
+  if (id == null) return undefined
+  return cateringCompanies.value.find((company) => company.id === id)
 }
 
 function formatDate(date: string) {
@@ -270,16 +334,55 @@ watch(
   }
 )
 
+watch(
+  teamMembers,
+  (members) => {
+    if (!form.team_member_id && members.length) {
+      form.team_member_id = members[0].id
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  accommodationCompanies,
+  (companies) => {
+    if (!form.accommodation_company_id && companies.length) {
+      form.accommodation_company_id = companies[0].id
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  cateringCompanies,
+  (companies) => {
+    if (!form.catering_company_id && companies.length) {
+      form.catering_company_id = companies[0].id
+    }
+  },
+  { immediate: true }
+)
+
 async function handleCreate() {
   if (!form.project_id) return
   try {
     saving.value = true
     const trimmedSiteCode = form.site_code.trim()
+    const selectionSummary = [
+      form.team_member_id ? `Zespół: ${findTeamMember(form.team_member_id)?.name}` : null,
+      form.accommodation_company_id
+        ? `Noclegi: ${findAccommodationCompany(form.accommodation_company_id)?.name}`
+        : null,
+      form.catering_company_id ? `Posiłki: ${findCateringCompany(form.catering_company_id)?.name}` : null
+    ].filter(Boolean)
+    const supplementalNotes = selectionSummary.length ? selectionSummary.join(' | ') : ''
+    const userNotes = form.notes.trim()
     const payload = {
       ...form,
       site_code: trimmedSiteCode,
       date: new Date(form.date).toISOString(),
-      notes: form.notes.trim() ? form.notes.trim() : null
+      notes: [supplementalNotes, userNotes].filter(Boolean).join(' | ') || null
     }
     form.site_code = trimmedSiteCode
     await api<WorkLog>('/worklogs/', {
@@ -327,6 +430,7 @@ async function handleLogout() {
 
 onMounted(async () => {
   userStore.hydrateFromStorage()
+  dictionaryStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
     router.replace('/login')
     return
