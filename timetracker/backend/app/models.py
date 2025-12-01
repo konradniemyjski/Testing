@@ -40,6 +40,17 @@ class Project(Base, TimestampMixin):
     worklogs: Mapped[list["WorkLog"]] = relationship(back_populates="project", cascade="all, delete-orphan")
 
 
+class Team(Base, TimestampMixin):
+    __tablename__ = "teams"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+
+    members: Mapped[list["TeamMember"]] = relationship(
+        back_populates="team", cascade="all, delete-orphan"
+    )
+
+
 class WorkLog(Base, TimestampMixin):
     __tablename__ = "worklogs"
 
@@ -98,5 +109,11 @@ class TeamMember(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    role: Mapped[str] = mapped_column(String(50), nullable=False, default="Pracownik")
+    team_id: Mapped[int | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="CASCADE"), nullable=True
+    )
+
+    team: Mapped[Team | None] = relationship(back_populates="members")
 
     worklogs: Mapped[list[WorkLog]] = relationship(back_populates="team_member")
