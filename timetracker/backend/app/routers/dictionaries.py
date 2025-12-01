@@ -9,30 +9,32 @@ from ..db import get_db
 router = APIRouter(prefix="/dictionaries", tags=["dictionaries"])
 
 
-def get_default_team(db: Session) -> models.Team:
-    team = (
-        db.query(models.Team)
-        .options(joinedload(models.Team.members))
-        .order_by(models.Team.id.asc())
-        .first()
-    )
-    if team:
-        team.members = (
-            db.query(models.TeamMember)
-            .filter(
-                (models.TeamMember.team_id == team.id)
-                | (models.TeamMember.team_id.is_(None))
-            )
-            .order_by(models.TeamMember.name.asc())
-            .all()
-        )
-        return team
+def ensure_default_team(db: Session) -> None:
+    existing_team = db.query(models.Team).order_by(models.Team.id.asc()).first()
+    if existing_team:
+        return
 
     team = models.Team(name="Zespół")
     db.add(team)
     db.commit()
-    db.refresh(team)
-    return team
+
+
+def serialize_teams(db: Session) -> list[models.Team]:
+    ensure_default_team(db)
+    teams = (
+        db.query(models.Team)
+        .options(joinedload(models.Team.members))
+        .order_by(models.Team.name.asc(), models.Team.id.asc())
+        .all()
+    )
+    for team in teams:
+        team.members = (
+            db.query(models.TeamMember)
+            .filter(models.TeamMember.team_id == team.id)
+            .order_by(models.TeamMember.name.asc())
+            .all()
+        )
+    return teams
 
 
 @router.get("/catering", response_model=list[schemas.CateringCompanyRead])
@@ -183,26 +185,72 @@ async def update_accommodation_company(
     return company
 
 
-@router.get("/team", response_model=schemas.TeamRead)
-async def get_team(
+@router.get("/team", response_model=list[schemas.TeamRead])
+async def list_teams(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
 ):
-    return get_default_team(db)
+    return serialize_teams(db)
 
 
-@router.put("/team", response_model=schemas.TeamRead)
+@router.post("/team", response_model=schemas.TeamRead, status_code=status.HTTP_201_CREATED)
+async def create_team(
+    team_in: schemas.TeamCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_admin)],
+):
+    ensure_default_team(db)
+    trimmed_name = team_in.name.strip()
+    existing = (
+        db.query(models.Team).filter(models.Team.name == trimmed_name).first()
+    )
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Zespół o tej nazwie już istnieje")
+
+    team = models.Team(name=trimmed_name)
+    db.add(team)
+    db.commit()
+    db.refresh(team)
+    loaded = (
+        db.query(models.Team)
+        .options(joinedload(models.Team.members))
+        .filter(models.Team.id == team.id)
+        .first()
+    )
+    return loaded or team
+
+
+@router.put("/team/{team_id}", response_model=schemas.TeamRead)
 async def update_team(
+    team_id: int,
     team_in: schemas.TeamUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(auth.get_current_active_admin)],
 ):
-    team = get_default_team(db)
-    team.name = team_in.name.strip()
+    team = db.get(models.Team, team_id)
+    if not team:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono zespołu")
+
+    trimmed_name = team_in.name.strip()
+    existing = (
+        db.query(models.Team)
+        .filter(models.Team.name == trimmed_name, models.Team.id != team_id)
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Zespół o tej nazwie już istnieje")
+
+    team.name = trimmed_name
     db.add(team)
     db.commit()
     db.refresh(team)
-    return get_default_team(db)
+    loaded = (
+        db.query(models.Team)
+        .options(joinedload(models.Team.members))
+        .filter(models.Team.id == team.id)
+        .first()
+    )
+    return loaded or team
 
 
 @router.post("/team/members", response_model=schemas.TeamMemberRead, status_code=status.HTTP_201_CREATED)
@@ -211,7 +259,18 @@ async def create_team_member(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(auth.get_current_active_admin)],
 ):
-    target_team_id = member_in.team_id or get_default_team(db).id
+    ensure_default_team(db)
+    target_team_id = member_in.team_id
+    if target_team_id is None:
+        target_team = db.query(models.Team).order_by(models.Team.id.asc()).first()
+        target_team_id = target_team.id if target_team else None
+
+    if target_team_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Brak zespołu do przypisania")
+
+    team = db.get(models.Team, target_team_id)
+    if not team:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono zespołu")
 
     existing = (
         db.query(models.TeamMember)
@@ -240,7 +299,18 @@ async def update_team_member(
     if not member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono osoby")
 
-    target_team_id = member_in.team_id or get_default_team(db).id
+    ensure_default_team(db)
+    target_team_id = member_in.team_id
+    if target_team_id is None:
+        target_team = db.query(models.Team).order_by(models.Team.id.asc()).first()
+        target_team_id = target_team.id if target_team else None
+
+    if target_team_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Brak zespołu do przypisania")
+
+    team = db.get(models.Team, target_team_id)
+    if not team:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono zespołu")
 
     existing = (
         db.query(models.TeamMember)

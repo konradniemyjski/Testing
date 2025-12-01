@@ -33,7 +33,7 @@ export type Team = {
 type DictionaryState = {
   cateringCompanies: CateringCompany[]
   accommodationCompanies: AccommodationCompany[]
-  team: Team | null
+  teams: Team[]
   teamMembers: TeamMember[]
   loaded: boolean
 }
@@ -42,11 +42,17 @@ export const useDictionaryStore = defineStore('dictionaries', {
   state: (): DictionaryState => ({
     cateringCompanies: [],
     accommodationCompanies: [],
-    team: null,
+    teams: [],
     teamMembers: [],
     loaded: false
   }),
   actions: {
+    refreshTeamMembers() {
+      const aggregated = this.teams.flatMap((team) =>
+        (team.members || []).map((member) => ({ ...member, team_id: team.id }))
+      )
+      this.teamMembers = aggregated.sort((a, b) => a.name.localeCompare(b.name, 'pl'))
+    },
     persistState() {
       if (!process.client) {
         return
@@ -55,7 +61,7 @@ export const useDictionaryStore = defineStore('dictionaries', {
       const payload = {
         cateringCompanies: this.cateringCompanies,
         accommodationCompanies: this.accommodationCompanies,
-        team: this.team,
+        teams: this.teams,
         teamMembers: this.teamMembers
       }
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
@@ -74,8 +80,9 @@ export const useDictionaryStore = defineStore('dictionaries', {
         const parsed = JSON.parse(cached) as Omit<DictionaryState, 'loaded'>
         this.cateringCompanies = parsed.cateringCompanies
         this.accommodationCompanies = parsed.accommodationCompanies
-        this.team = parsed.team
-        this.teamMembers = parsed.teamMembers
+        this.teams = parsed.teams || []
+        this.teamMembers = parsed.teamMembers || []
+        this.refreshTeamMembers()
         this.loaded = true
       } catch {
         // ignore cache parsing issues and fall back to fetching
@@ -86,15 +93,15 @@ export const useDictionaryStore = defineStore('dictionaries', {
         return
       }
       const api = useApi()
-      const [catering, accommodation, team] = await Promise.all([
+      const [catering, accommodation, teams] = await Promise.all([
         api<CateringCompany[]>('/dictionaries/catering'),
         api<AccommodationCompany[]>('/dictionaries/accommodation'),
-        api<Team>('/dictionaries/team')
+        api<Team[]>('/dictionaries/team')
       ])
       this.cateringCompanies = catering
       this.accommodationCompanies = accommodation
-      this.team = team
-      this.teamMembers = team.members
+      this.teams = teams
+      this.refreshTeamMembers()
       this.loaded = true
 
       this.persistState()
@@ -155,14 +162,25 @@ export const useDictionaryStore = defineStore('dictionaries', {
       this.persistState()
       return updated
     },
-    async updateTeamName(name: string) {
+    async createTeam(name: string) {
       const api = useApi()
-      const updated = await api<Team>('/dictionaries/team', {
+      const created = await api<Team>('/dictionaries/team', {
+        method: 'POST',
+        body: { name }
+      })
+      this.teams = [...this.teams, created]
+      this.refreshTeamMembers()
+      this.persistState()
+      return created
+    },
+    async updateTeam(id: number, name: string) {
+      const api = useApi()
+      const updated = await api<Team>(`/dictionaries/team/${id}`, {
         method: 'PUT',
         body: { name }
       })
-      this.team = updated
-      this.teamMembers = updated.members
+      this.teams = this.teams.map((team) => (team.id === id ? { ...updated } : team))
+      this.refreshTeamMembers()
       this.persistState()
       return updated
     },
@@ -172,10 +190,14 @@ export const useDictionaryStore = defineStore('dictionaries', {
         method: 'POST',
         body: payload
       })
-      this.teamMembers = [...this.teamMembers, created]
-      if (this.team) {
-        this.team = { ...this.team, members: this.teamMembers }
+      this.teams = this.teams.map((team) =>
+        team.id === created.team_id ? { ...team, members: [...team.members, created] } : team
+      )
+      const hasTargetTeam = this.teams.some((team) => team.id === created.team_id)
+      if (!hasTargetTeam && created.team_id != null) {
+        this.teams = [...this.teams, { id: created.team_id, name: '', members: [created] }]
       }
+      this.refreshTeamMembers()
       this.persistState()
       return created
     },
@@ -185,22 +207,29 @@ export const useDictionaryStore = defineStore('dictionaries', {
         method: 'PUT',
         body: payload
       })
-      this.teamMembers = this.teamMembers.map((member) =>
-        member.id === id ? updated : member
-      )
-      if (this.team) {
-        this.team = { ...this.team, members: this.teamMembers }
+      this.teams = this.teams.map((team) => {
+        const filteredMembers = team.members.filter((member) => member.id !== id)
+        const shouldInclude = updated.team_id === team.id
+        return shouldInclude
+          ? { ...team, members: [...filteredMembers, updated] }
+          : { ...team, members: filteredMembers }
+      })
+      const hasTargetTeam = this.teams.some((team) => team.id === updated.team_id)
+      if (!hasTargetTeam && updated.team_id != null) {
+        this.teams = [...this.teams, { id: updated.team_id, name: '', members: [updated] }]
       }
+      this.refreshTeamMembers()
       this.persistState()
       return updated
     },
     async deleteTeamMember(id: number) {
       const api = useApi()
       await api(`/dictionaries/team/members/${id}`, { method: 'DELETE' })
-      this.teamMembers = this.teamMembers.filter((member) => member.id !== id)
-      if (this.team) {
-        this.team = { ...this.team, members: this.teamMembers }
-      }
+      this.teams = this.teams.map((team) => ({
+        ...team,
+        members: team.members.filter((member) => member.id !== id)
+      }))
+      this.refreshTeamMembers()
       this.persistState()
     }
   }
