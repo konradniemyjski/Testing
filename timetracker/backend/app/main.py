@@ -18,7 +18,10 @@ from .routers import users as users_router
 
 def ensure_initial_admin_user() -> None:
     login = os.getenv("INITIAL_ADMIN_LOGIN", "admin").strip() or "admin"
-    password = os.getenv("INITIAL_ADMIN_PASSWORD", "admin")
+    password = os.getenv("INITIAL_ADMIN_PASSWORD")
+
+    if not password:
+        return
 
     with SessionLocal() as session:
         existing_user = (
@@ -74,7 +77,7 @@ allow_origin_regex_env = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
 allow_origin_regex = (
     allow_origin_regex_env.strip()
     if allow_origin_regex_env and allow_origin_regex_env.strip()
-    else r"https?://.*"
+    else None
 )
 
 if allowed_origins == ["*"]:
