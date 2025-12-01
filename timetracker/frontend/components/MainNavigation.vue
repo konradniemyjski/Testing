@@ -23,51 +23,6 @@
         :class="{ 'nav-btn--active': isActive('/dictionaries') }"
         @click="navigate('/dictionaries')"
       >
-        Słowniki
-      </button>
-      <button
-        v-if="userStore.profile?.role === 'admin'"
-        type="button"
-        class="nav-btn"
-        :class="{ 'nav-btn--active': isActive('/dictionaries') }"
-        @click="navigate('/dictionaries')"
-      >
-        Administracja
-      </button>
-      <button
-        v-if="userStore.profile?.role === 'admin'"
-        type="button"
-        class="nav-btn"
-        :class="{ 'nav-btn--active': isActive('/dictionaries') }"
-        @click="navigate('/dictionaries')"
-      >
-        Administracja
-      </button>
-      <button
-        v-if="userStore.profile?.role === 'admin'"
-        type="button"
-        class="nav-btn"
-        :class="{ 'nav-btn--active': isActive('/dictionaries') }"
-        @click="navigate('/dictionaries')"
-      >
-        Administracja
-      </button>
-      <button
-        v-if="userStore.profile?.role === 'admin'"
-        type="button"
-        class="nav-btn"
-        :class="{ 'nav-btn--active': isActive('/dictionaries') }"
-        @click="navigate('/dictionaries')"
-      >
-        Administracja
-      </button>
-      <button
-        v-if="userStore.profile?.role === 'admin'"
-        type="button"
-        class="nav-btn"
-        :class="{ 'nav-btn--active': isActive('/dictionaries') }"
-        @click="navigate('/dictionaries')"
-      >
         Administracja
       </button>
       <button
