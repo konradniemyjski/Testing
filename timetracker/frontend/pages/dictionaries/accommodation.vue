@@ -1,17 +1,17 @@
 <template>
-  <div v-if="ready" class="container">
+  <div class="container">
     <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header class="page-header">
         <div>
-          <h1>Administracja — firmy noclegowe</h1>
-          <p class="text-muted">Dodaj NIP oraz nazwę firm zapewniających noclegi.</p>
+          <h1>Słownik firm noclegowych</h1>
+          <p class="text-muted">Zapisz NIP i nazwy firm oferujących zakwaterowanie.</p>
         </div>
       </header>
 
       <section class="grid-section">
         <div>
-          <h2>Dodaj firmę</h2>
+          <h2>Dodaj firmę noclegową</h2>
           <form class="entry-form" @submit.prevent="addCompany">
             <div class="form-group">
               <label for="accommodationTaxId">NIP</label>
@@ -35,9 +35,7 @@
             </div>
             <p v-if="errorMessage" class="feedback feedback--error">{{ errorMessage }}</p>
             <p v-if="successMessage" class="feedback feedback--success">{{ successMessage }}</p>
-            <button class="primary-btn" type="submit" :disabled="submitting">
-              {{ submitting ? 'Zapisywanie…' : 'Dodaj firmę' }}
-            </button>
+            <button class="primary-btn" type="submit">Dodaj firmę</button>
           </form>
         </div>
 
@@ -53,7 +51,7 @@
             </thead>
             <tbody>
               <tr v-for="company in companies" :key="company.id">
-                <td>{{ company.tax_id }}</td>
+                <td>{{ company.taxId }}</td>
                 <td>{{ company.name }}</td>
                 <td>
                   <button class="secondary-btn" type="button" @click="removeCompany(company.id)">
@@ -72,33 +70,32 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useDictionaryStore } from '~/stores/dictionaries'
 import { useUserStore } from '~/stores/user'
 
-definePageMeta({ ssr: false })
+type AccommodationCompany = {
+  id: number
+  taxId: string
+  name: string
+}
 
 const userStore = useUserStore()
-const dictionaryStore = useDictionaryStore()
 const router = useRouter()
 const canManageUsers = computed(() => userStore.profile?.role === 'admin')
-const isAdmin = computed(() => userStore.profile?.role === 'admin')
 
-const companies = computed(() => dictionaryStore.accommodationCompanies)
+const companies = ref<AccommodationCompany[]>([])
 const form = reactive({
   taxId: '',
   name: ''
 })
 const errorMessage = ref('')
 const successMessage = ref('')
-const submitting = ref(false)
-const ready = ref(false)
 
 function resetFeedback() {
   errorMessage.value = ''
   successMessage.value = ''
 }
 
-async function addCompany() {
+function addCompany() {
   resetFeedback()
   const taxId = form.taxId.trim()
   const name = form.name.trim()
@@ -108,21 +105,19 @@ async function addCompany() {
     return
   }
 
-  try {
-    submitting.value = true
-    await dictionaryStore.createAccommodationCompany({ tax_id: taxId, name })
-    form.taxId = ''
-    form.name = ''
-    successMessage.value = 'Dodano firmę noclegową do słownika.'
-  } catch (error: any) {
-    errorMessage.value = error?.data?.detail || 'Nie udało się zapisać firmy.'
-  } finally {
-    submitting.value = false
-  }
+  companies.value.push({
+    id: Date.now(),
+    taxId,
+    name
+  })
+
+  form.taxId = ''
+  form.name = ''
+  successMessage.value = 'Dodano firmę noclegową do słownika.'
 }
 
-async function removeCompany(id: number) {
-  await dictionaryStore.deleteAccommodationCompany(id)
+function removeCompany(id: number) {
+  companies.value = companies.value.filter((company) => company.id !== id)
 }
 
 function handleLogout() {
@@ -130,20 +125,11 @@ function handleLogout() {
   router.replace('/login')
 }
 
-onMounted(async () => {
+onMounted(() => {
   userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
     router.replace('/login')
-    return
   }
-
-  if (!isAdmin.value) {
-    router.replace('/dashboard')
-    return
-  }
-
-  await dictionaryStore.fetchDictionaries()
-  ready.value = true
 })
 </script>
 

@@ -213,7 +213,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useApi } from '~/composables/useApi'
-import { useDictionaryStore, type AccommodationCompany, type CateringCompany, type TeamMember } from '~/stores/dictionaries'
+import { useDictionaryStore } from '~/stores/dictionaries'
 import { useUserStore } from '~/stores/user'
 
 definePageMeta({ ssr: false })
@@ -400,12 +400,20 @@ async function handleCreate() {
   try {
     saving.value = true
     const trimmedSiteCode = form.site_code.trim()
+    const selectionSummary = [
+      form.team_member_id ? `Zespół: ${findTeamMember(form.team_member_id)?.name}` : null,
+      form.accommodation_company_id
+        ? `Noclegi: ${findAccommodationCompany(form.accommodation_company_id)?.name}`
+        : null,
+      form.catering_company_id ? `Posiłki: ${findCateringCompany(form.catering_company_id)?.name}` : null
+    ].filter(Boolean)
+    const supplementalNotes = selectionSummary.length ? selectionSummary.join(' | ') : ''
     const userNotes = form.notes.trim()
     const payload = {
       ...form,
       site_code: trimmedSiteCode || findProject(form.project_id)?.code || '',
       date: new Date(form.date).toISOString(),
-      notes: userNotes || null
+      notes: [supplementalNotes, userNotes].filter(Boolean).join(' | ') || null
     }
     form.site_code = trimmedSiteCode || findProject(form.project_id)?.code || ''
     await api<WorkLog>('/worklogs/', {
@@ -453,6 +461,7 @@ async function handleLogout() {
 
 onMounted(async () => {
   userStore.hydrateFromStorage()
+  dictionaryStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
     router.replace('/login')
     return

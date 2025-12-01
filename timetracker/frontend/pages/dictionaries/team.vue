@@ -1,11 +1,11 @@
 <template>
-  <div v-if="ready" class="container">
+  <div class="container">
     <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header class="page-header">
         <div>
-          <h1>Administracja — członkowie zespołu</h1>
-          <p class="text-muted">Dodaj osoby do słownika, aby wykorzystać je na panelu głównym.</p>
+          <h1>Słownik członków zespołu</h1>
+          <p class="text-muted">Dodaj imiona i nazwiska osób współpracujących przy projektach.</p>
         </div>
       </header>
 
@@ -20,20 +20,18 @@
                 v-model="form.name"
                 type="text"
                 required
-                placeholder="np. Jan Kowalski"
+                placeholder="np. Anna Nowak"
               />
             </div>
             <p v-if="errorMessage" class="feedback feedback--error">{{ errorMessage }}</p>
             <p v-if="successMessage" class="feedback feedback--success">{{ successMessage }}</p>
-            <button class="primary-btn" type="submit" :disabled="submitting">
-              {{ submitting ? 'Zapisywanie…' : 'Dodaj osobę' }}
-            </button>
+            <button class="primary-btn" type="submit">Dodaj osobę</button>
           </form>
         </div>
 
         <div>
           <h2>Zapisane osoby</h2>
-          <table v-if="members.length" class="table">
+          <table v-if="teamMembers.length" class="table">
             <thead>
               <tr>
                 <th>Imię i nazwisko</th>
@@ -41,7 +39,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="member in members" :key="member.id">
+              <tr v-for="member in teamMembers" :key="member.id">
                 <td>{{ member.name }}</td>
                 <td>
                   <button class="secondary-btn" type="button" @click="removeMember(member.id)">
@@ -51,7 +49,7 @@
               </tr>
             </tbody>
           </table>
-          <p v-else class="text-muted">Brak osób w słowniku. Dodaj pierwszą po lewej.</p>
+          <p v-else class="text-muted">Brak osób na liście. Dodaj pierwszą po lewej.</p>
         </div>
       </section>
     </div>
@@ -60,54 +58,49 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useDictionaryStore } from '~/stores/dictionaries'
 import { useUserStore } from '~/stores/user'
 
-definePageMeta({ ssr: false })
+type TeamMember = {
+  id: number
+  name: string
+}
 
 const userStore = useUserStore()
-const dictionaryStore = useDictionaryStore()
 const router = useRouter()
 const canManageUsers = computed(() => userStore.profile?.role === 'admin')
-const isAdmin = computed(() => userStore.profile?.role === 'admin')
 
-const members = computed(() => dictionaryStore.teamMembers)
+const teamMembers = ref<TeamMember[]>([])
 const form = reactive({
   name: ''
 })
 const errorMessage = ref('')
 const successMessage = ref('')
-const submitting = ref(false)
-const ready = ref(false)
 
 function resetFeedback() {
   errorMessage.value = ''
   successMessage.value = ''
 }
 
-async function addMember() {
+function addMember() {
   resetFeedback()
   const name = form.name.trim()
 
   if (!name) {
-    errorMessage.value = 'Podaj imię i nazwisko osoby.'
+    errorMessage.value = 'Imię i nazwisko jest wymagane.'
     return
   }
 
-  try {
-    submitting.value = true
-    await dictionaryStore.createTeamMember({ name })
-    form.name = ''
-    successMessage.value = 'Dodano osobę do słownika zespołu.'
-  } catch (error: any) {
-    errorMessage.value = error?.data?.detail || 'Nie udało się zapisać osoby.'
-  } finally {
-    submitting.value = false
-  }
+  teamMembers.value.push({
+    id: Date.now(),
+    name
+  })
+
+  form.name = ''
+  successMessage.value = 'Dodano osobę do słownika zespołu.'
 }
 
-async function removeMember(id: number) {
-  await dictionaryStore.deleteTeamMember(id)
+function removeMember(id: number) {
+  teamMembers.value = teamMembers.value.filter((member) => member.id !== id)
 }
 
 function handleLogout() {
@@ -115,20 +108,11 @@ function handleLogout() {
   router.replace('/login')
 }
 
-onMounted(async () => {
+onMounted(() => {
   userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
     router.replace('/login')
-    return
   }
-
-  if (!isAdmin.value) {
-    router.replace('/dashboard')
-    return
-  }
-
-  await dictionaryStore.fetchDictionaries()
-  ready.value = true
 })
 </script>
 

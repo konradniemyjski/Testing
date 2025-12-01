@@ -1,10 +1,10 @@
 <template>
-  <div v-if="ready" class="container">
+  <div class="container">
     <MainNavigation :can-manage-users="canManageUsers" @logout="handleLogout" />
     <div class="card">
       <header class="page-header">
         <div>
-          <h1>Administracja</h1>
+          <h1>Słowniki firm i zespołu</h1>
           <p class="text-muted">
             Dodaj lub uzupełnij podstawowe dane wykorzystywane podczas rozliczeń i raportowania.
           </p>
@@ -44,17 +44,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useUserStore } from '~/stores/user'
-
-definePageMeta({ ssr: false })
 
 const userStore = useUserStore()
 const router = useRouter()
-const ready = ref(false)
 
 const canManageUsers = computed(() => userStore.profile?.role === 'admin')
-const isAdmin = computed(() => userStore.profile?.role === 'admin')
 
 function handleLogout() {
   userStore.clear()
@@ -65,14 +61,7 @@ onMounted(() => {
   userStore.hydrateFromStorage()
   if (!userStore.isAuthenticated) {
     router.replace('/login')
-    return
   }
-
-  if (!isAdmin.value) {
-    router.replace('/dashboard')
-    return
-  }
-  ready.value = true
 })
 </script>
 
