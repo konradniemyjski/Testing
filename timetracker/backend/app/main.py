@@ -10,6 +10,7 @@ from .db import Base, SessionLocal, engine
 from .schema_utils import ensure_all_columns
 from .auth import get_password_hash
 from .routers import auth as auth_router
+from .routers import dictionaries as dictionaries_router
 from .routers import projects as projects_router
 from .routers import worklogs as worklogs_router
 from .routers import users as users_router
@@ -96,6 +97,7 @@ def read_health() -> dict[str, str]:
 
 
 app.include_router(auth_router.router)
+app.include_router(dictionaries_router.router)
 app.include_router(projects_router.router)
 app.include_router(worklogs_router.router)
 app.include_router(users_router.router)
