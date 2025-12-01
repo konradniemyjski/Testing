@@ -136,7 +136,10 @@ async def export_worklogs(
 ):
     query = _build_user_worklog_query(db, current_user, project_id, start_date, end_date)
     worklogs = (
-        query.options(joinedload(models.WorkLog.project))
+        query.options(
+            joinedload(models.WorkLog.project),
+            joinedload(models.WorkLog.team_member).joinedload(models.TeamMember.team),
+        )
         .order_by(models.WorkLog.date.asc(), models.WorkLog.id.asc())
         .all()
     )
@@ -150,6 +153,7 @@ async def export_worklogs(
         "Kod budowy",
         "Nazwa budowy",
         "Członek zespołu",
+        "Zespół",
         "Liczba pracowników",
         "Łączna liczba godzin",
         "Posiłki",
@@ -171,6 +175,7 @@ async def export_worklogs(
         else:
             author_label = f"ID: {worklog.user_id}"
         team_member = worklog.team_member.name if worklog.team_member else ""
+        team_name = worklog.team_member.team.name if worklog.team_member and worklog.team_member.team else ""
         catering_company = worklog.catering_company.name if worklog.catering_company else ""
         accommodation_company = (
             worklog.accommodation_company.name if worklog.accommodation_company else ""
@@ -181,6 +186,7 @@ async def export_worklogs(
                 worklog.site_code,
                 project_name,
                 team_member,
+                team_name,
                 worklog.employee_count,
                 float(worklog.hours_worked),
                 worklog.meals_served,
