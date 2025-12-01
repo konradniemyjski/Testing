@@ -34,15 +34,31 @@
               <input id="siteCode" v-model="form.site_code" type="text" required />
             </div>
             <div class="form-group">
-              <label for="teamMember">Zespół</label>
+              <label for="teamSelect">Zespół</label>
+              <select
+                id="teamSelect"
+                v-model.number="selectedTeamId"
+                :disabled="!teams.length"
+                required
+              >
+                <option v-if="!teams.length" disabled value="">Brak danych w słowniku</option>
+                <option v-for="team in teams" :key="team.id" :value="team.id">
+                  {{ team.name || 'Bez nazwy' }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="teamMember">Członek zespołu</label>
               <select
                 id="teamMember"
                 v-model.number="form.team_member_id"
-                :disabled="!teamMembers.length"
+                :disabled="!filteredTeamMembers.length"
                 required
               >
-                <option v-if="!teamMembers.length" disabled value="">Brak danych w słowniku</option>
-                <option v-for="member in teamMembers" :key="member.id" :value="member.id">
+                <option v-if="!filteredTeamMembers.length" disabled value="">
+                  Brak pracowników w wybranym zespole
+                </option>
+                <option v-for="member in filteredTeamMembers" :key="member.id" :value="member.id">
                   {{ member.name }}
                 </option>
               </select>
@@ -286,9 +302,18 @@ const roleLabel = computed(() => {
   return 'Użytkownik'
 })
 
+const teams = computed(() => dictionaryStore.teams)
 const teamMembers = computed(() => dictionaryStore.teamMembers)
 const accommodationCompanies = computed(() => dictionaryStore.accommodationCompanies)
 const cateringCompanies = computed(() => dictionaryStore.cateringCompanies)
+
+const selectedTeamId = ref<number | null>(null)
+const filteredTeamMembers = computed(() => {
+  if (selectedTeamId.value == null) {
+    return teamMembers.value
+  }
+  return teamMembers.value.filter((member) => member.team_id === selectedTeamId.value)
+})
 
 function findProject(id: number | null | undefined) {
   if (id == null) {
@@ -300,6 +325,11 @@ function findProject(id: number | null | undefined) {
 function findTeamMember(id: number | null | undefined) {
   if (id == null) return undefined
   return teamMembers.value.find((member) => member.id === id)
+}
+
+function findTeam(id: number | null | undefined) {
+  if (id == null) return undefined
+  return teams.value.find((team) => team.id === id)
 }
 
 function findAccommodationCompany(id: number | null | undefined) {
@@ -328,7 +358,13 @@ function formatAuthor(entry: WorkLog) {
 }
 
 function formatTeam(entry: WorkLog) {
-  return entry.team_member?.name || findTeamMember(entry.team_member_id)?.name || '—'
+  const member = entry.team_member || findTeamMember(entry.team_member_id)
+  const memberName = member?.name
+  const memberTeam = findTeam(member?.team_id)
+  if (!memberName) {
+    return '—'
+  }
+  return memberTeam?.name ? `${memberName} (${memberTeam.name})` : memberName
 }
 
 function formatCatering(entry: WorkLog) {
@@ -366,9 +402,24 @@ watch(
 )
 
 watch(
-  teamMembers,
-  (members) => {
-    if (!form.team_member_id && members.length) {
+  teams,
+  (teamList) => {
+    if (teamList.length && selectedTeamId.value == null) {
+      selectedTeamId.value = teamList[0].id
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  [filteredTeamMembers, selectedTeamId],
+  ([members]) => {
+    if (members.length === 0) {
+      form.team_member_id = null
+      return
+    }
+    const exists = members.some((member) => member.id === form.team_member_id)
+    if (!exists) {
       form.team_member_id = members[0].id
     }
   },
