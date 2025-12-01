@@ -87,11 +87,16 @@ class ProjectRead(ProjectBase):
         from_attributes = True
 
 
+<<<<<<< HEAD
 NIP_PATTERN = r"^((\d{3}[- ]\d{3}[- ]\d{2}[- ]\d{2})|(\d{3}[- ]\d{2}[- ]\d{2}[- ]\d{3}))$"
 
 
 class CateringCompanyBase(BaseModel):
     tax_id: str = Field(min_length=1, max_length=64, pattern=NIP_PATTERN)
+=======
+class CateringCompanyBase(BaseModel):
+    tax_id: str = Field(min_length=1, max_length=64)
+>>>>>>> master
     name: str = Field(min_length=1, max_length=255)
 
 
@@ -109,7 +114,11 @@ class CateringCompanyRead(CateringCompanyBase):
 
 
 class AccommodationCompanyBase(BaseModel):
+<<<<<<< HEAD
     tax_id: str = Field(min_length=1, max_length=64, pattern=NIP_PATTERN)
+=======
+    tax_id: str = Field(min_length=1, max_length=64)
+>>>>>>> master
     name: str = Field(min_length=1, max_length=255)
 
 
