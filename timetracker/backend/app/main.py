@@ -76,12 +76,14 @@ if allowed_origins_env:
 # Deduplicate
 allowed_origins = list(set(allowed_origins))
 
-allow_origin_regex_env = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
-allow_origin_regex = (
-    allow_origin_regex_env.strip()
-    if allow_origin_regex_env and allow_origin_regex_env.strip()
-    else None
+allow_origin_regex_env = os.getenv("CORS_ALLOW_ORIGIN_REGEX", "https?://.*")
+allow_origin_regex_raw = (
+    allow_origin_regex_env.strip() if allow_origin_regex_env and allow_origin_regex_env.strip() else ""
 )
+if allow_origin_regex_raw.lower() == "none":
+    allow_origin_regex = None
+else:
+    allow_origin_regex = allow_origin_regex_raw or None
 
 if allowed_origins == ["*"]:
     # Starlette disallows using wildcards together with a regex.
