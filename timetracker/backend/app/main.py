@@ -61,10 +61,23 @@ default_allowed_origins = [
     "http://localhost",
     "http://localhost:3000",
     "http://localhost:5173",
+    "https://localhost",
+    "https://localhost:3000",
+    "https://localhost:5173",
     "http://127.0.0.1",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
+    "https://127.0.0.1",
+    "https://127.0.0.1:3000",
+    "https://127.0.0.1:5173",
 ]
+
+
+def deduplicate_preserve_order(values: list[str]) -> list[str]:
+    # dict preserves insertion order since Python 3.7
+    return list(dict.fromkeys(values))
+
+
 allowed_origins = list(default_allowed_origins)
 allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS")
 if allowed_origins_env:
@@ -73,15 +86,17 @@ if allowed_origins_env:
     ]
     allowed_origins.extend(env_origins)
 
-# Deduplicate
-allowed_origins = list(set(allowed_origins))
+# Deduplicate while preserving preference order
+allowed_origins = deduplicate_preserve_order(allowed_origins)
 
-allow_origin_regex_env = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
-allow_origin_regex = (
-    allow_origin_regex_env.strip()
-    if allow_origin_regex_env and allow_origin_regex_env.strip()
-    else None
+allow_origin_regex_env = os.getenv("CORS_ALLOW_ORIGIN_REGEX", "https?://.*")
+allow_origin_regex_raw = (
+    allow_origin_regex_env.strip() if allow_origin_regex_env and allow_origin_regex_env.strip() else ""
 )
+if allow_origin_regex_raw.lower() == "none":
+    allow_origin_regex = None
+else:
+    allow_origin_regex = allow_origin_regex_raw or None
 
 if allowed_origins == ["*"]:
     # Starlette disallows using wildcards together with a regex.
