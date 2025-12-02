@@ -65,13 +65,16 @@ default_allowed_origins = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
 ]
+allowed_origins = list(default_allowed_origins)
 allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS")
-if allowed_origins_env is not None:
-    allowed_origins = [
+if allowed_origins_env:
+    env_origins = [
         origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()
     ]
-else:
-    allowed_origins = default_allowed_origins
+    allowed_origins.extend(env_origins)
+
+# Deduplicate
+allowed_origins = list(set(allowed_origins))
 
 allow_origin_regex_env = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
 allow_origin_regex = (
