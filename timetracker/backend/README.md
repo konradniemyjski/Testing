@@ -20,7 +20,7 @@ The service listens on `http://localhost:8000` by default. Open `http://localhos
 | `DATABASE_URL` | `sqlite:///./worklog.db` | SQLAlchemy connection string. Set to the Postgres URL when running in Docker. |
 | `JWT_SECRET` | `super-secret-change-me` | Secret used to sign JWT tokens. |
 | `JWT_EXPIRE_MINUTES` | `1440` | Expiration time (in minutes) for generated access tokens. |
-| `CORS_ALLOW_ORIGINS` | `http://localhost,http://localhost:3000,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:3000,http://127.0.0.1:5173` | Comma separated list of origins allowed to call the API. |
+| `CORS_ALLOW_ORIGINS` | `http://localhost,http://localhost:3000,http://localhost:5173,https://localhost,https://localhost:3000,https://localhost:5173,http://127.0.0.1,http://127.0.0.1:3000,http://127.0.0.1:5173,https://127.0.0.1,https://127.0.0.1:3000,https://127.0.0.1:5173` | Comma separated list of origins allowed to call the API. |
 | `CORS_ALLOW_ORIGIN_REGEX` | `https?://.*` | Regex used to match allowed origins; set to `None` (case-insensitive) to disable regex matching. |
 
 ### Database migrations
