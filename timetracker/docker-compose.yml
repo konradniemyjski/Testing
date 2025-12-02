@@ -1,4 +1,3 @@
-
 services:
   db:
     image: postgres:16-alpine
@@ -12,7 +11,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,6 +27,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES}
       CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS}
+      CORS_ALLOW_ORIGIN_REGEX: ${CORS_ALLOW_ORIGIN_REGEX}
       INITIAL_ADMIN_LOGIN: ${INITIAL_ADMIN_LOGIN}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
     depends_on:
