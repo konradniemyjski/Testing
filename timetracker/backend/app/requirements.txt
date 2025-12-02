@@ -1,0 +1,30 @@
+"""Requirements.txt - Python dependencies."""
+
+# Core FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+sqlalchemy==2.0.23
+psycopg[binary]==3.13.1  # PostgreSQL driver
+pymysql==1.1.0  # MySQL driver
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Data Validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Development (optional)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.1  # For testing HTTP calls
+black==23.12.0  # Code formatter
+ruff==0.1.8  # Linter
+mypy==1.7.1  # Type checker
