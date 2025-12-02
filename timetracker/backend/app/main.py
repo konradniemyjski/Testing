@@ -109,7 +109,7 @@ def deduplicate_preserve_order(values: list[str]) -> list[str]:
     return list(dict.fromkeys(values))
 
 
-]
+
 
 allowed_origins = list(default_allowed_origins)
 
