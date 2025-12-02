@@ -30,6 +30,7 @@ services:
       CORS_ALLOW_ORIGIN_REGEX: ${CORS_ALLOW_ORIGIN_REGEX}
       INITIAL_ADMIN_LOGIN: ${INITIAL_ADMIN_LOGIN}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS}
     depends_on:
       db:
         condition: service_healthy
