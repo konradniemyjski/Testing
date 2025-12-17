@@ -37,9 +37,19 @@
         Użytkownicy
       </button>
     </div>
-    <button type="button" class="nav-btn nav-btn--logout" @click="emit('logout')">
-      Wyloguj
-    </button>
+    <div style="display: flex; gap: 0.75rem;">
+      <button 
+        type="button" 
+        class="nav-btn" 
+        :class="{ 'nav-btn--active': isActive('/profile') }"
+        @click="navigate('/profile')"
+      >
+        Profil
+      </button>
+      <button type="button" class="nav-btn nav-btn--logout" @click="emit('logout')">
+        Wyloguj
+      </button>
+    </div>
   </nav>
 </template>
 
