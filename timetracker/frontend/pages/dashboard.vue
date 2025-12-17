@@ -486,7 +486,7 @@ watch(
 watch(
   teams,
   (teamList) => {
-    if (teamList.length && selectedTeamId.value == null) {
+    if (teamList.length && selectedTeamId.value == null && !isUser.value) {
       selectedTeamId.value = teamList[0].id
     }
   },
@@ -494,6 +494,8 @@ watch(
 )
 
 watch(selectedTeamId, async (newId) => {
+  if (isUser.value) return
+
   if (!newId) {
     entries.value = []
     return
@@ -544,6 +546,8 @@ watch(isUser, (val) => {
       absenceComment: '',
       isManual: false
     }]
+    // Clear selected team to prevent interference
+    selectedTeamId.value = null
   }
 }, { immediate: true })
 
