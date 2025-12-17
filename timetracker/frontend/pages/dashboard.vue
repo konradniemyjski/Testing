@@ -37,39 +37,13 @@
             </div>
 
             <div class="form-group">
-              <label for="employeeCount">Liczba pracowników</label>
-              <input
-                id="employeeCount"
-                v-model.number="form.employee_count"
-                type="number"
-                min="1"
-                max="1000"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="hoursWorked">Łączna liczba godzin</label>
-              <input
-                id="hoursWorked"
-                v-model.number="form.hours_worked"
-                type="number"
-                min="0.25"
-                max="2000"
-                step="0.25"
-                required
-              />
-            </div>
-
-            <div class="form-group">
               <label for="teamSelect">Zespół</label>
               <select
                 id="teamSelect"
                 v-model.number="selectedTeamId"
                 :disabled="!teams.length"
-                required
               >
-                <option v-if="!teams.length" disabled value="">Brak danych w słowniku</option>
+                <option :value="null">Wybierz zespół</option>
                 <option v-for="team in teams" :key="team.id" :value="team.id">
                   {{ team.name || 'Bez nazwy' }}
                 </option>
@@ -77,47 +51,97 @@
             </div>
 
             <!-- Bulk Entry Section -->
-            <div v-if="selectedTeamId" class="bulk-entry-section">
-              <h3>Członkowie zespołu ({{ filteredTeamMembers.length }})</h3>
+            <div v-if="selectedTeamId || entries.length" class="bulk-entry-section">
+              <h3>Pracownicy</h3>
               
-              <div v-for="(entry, index) in entries" :key="entry.team_member_id" class="member-card">
+              <div 
+                v-for="(entry, index) in entries" 
+                :key="index" 
+                class="member-card"
+                :class="{ 'absent': !entry.isPresent }"
+              >
                 <div class="member-header">
-                  <strong>{{ findTeamMember(entry.team_member_id)?.name }}</strong>
+                  <div class="member-identity">
+                    <!-- If pre-filled member (has ID and valid), show text. If manual entry, show select -->
+                    <strong v-if="entry.team_member_id && findTeamMember(entry.team_member_id)">
+                      {{ findTeamMember(entry.team_member_id)?.name }}
+                    </strong>
+                    <select 
+                      v-else 
+                      v-model.number="entry.team_member_id" 
+                      class="member-select"
+                      required
+                    >
+                      <option :value="null" disabled>Wybierz pracownika</option>
+                      <option v-for="m in teamMembers" :key="m.id" :value="m.id">
+                        {{ m.name }}
+                      </option>
+                    </select>
+                  </div>
+
                   <div class="attendance-toggle">
                     <label>
-                      <input type="checkbox" v-model="entry.isPresent"> Obecny
+                      <input type="checkbox" v-model="entry.isPresent"> 
+                      {{ entry.isPresent ? 'Obecny' : 'Nieobecny' }}
                     </label>
                   </div>
                 </div>
 
-                <div v-if="entry.isPresent" class="member-details">
-                  <div class="form-group-inline">
-                    <label>Godz.</label>
-                    <input type="number" v-model.number="entry.hours_worked" min="0.25" step="0.25" style="width: 80px">
+                <div class="member-body">
+                  <div v-if="entry.isPresent" class="member-details">
+                    <div class="form-group-inline">
+                      <label>Godziny</label>
+                      <input type="number" v-model.number="entry.hours_worked" min="0.25" step="0.25" style="width: 80px">
+                    </div>
+                    <div class="form-group-inline">
+                      <label>Posiłki</label>
+                      <input type="number" v-model.number="entry.meals_served" min="0" style="width: 60px">
+                    </div>
+                    <div class="form-group-inline">
+                      <label>Nocleg</label>
+                      <select v-model.number="entry.overnight_stays" style="width: 70px">
+                        <option :value="0">Nie</option>
+                        <option :value="1">Tak</option>
+                      </select>
+                    </div>
                   </div>
-                  <div class="form-group-inline">
-                    <label>Posiłki</label>
-                    <input type="number" v-model.number="entry.meals_served" min="0" style="width: 60px">
-                  </div>
-                  <div class="form-group-inline">
-                    <label>Nocleg</label>
-                    <input type="number" v-model.number="entry.overnight_stays" min="0" style="width: 60px">
-                  </div>
-                </div>
 
-                <div v-else class="member-absence">
-                  <select v-model="entry.absenceReason" class="absence-select">
-                    <option value="Urlop">Urlop</option>
-                    <option value="L4">L4</option>
-                    <option value="Inne">Inne</option>
-                    <option value="Nieusprawiedliwiona">Nieusprawiedliwiona</option>
-                  </select>
+                  <div v-else class="member-absence">
+                     <div class="form-group-inline">
+                        <label>Powód nieobecności</label>
+                        <select v-model="entry.absenceReason" class="absence-select">
+                          <option value="Urlop">Urlop</option>
+                          <option value="L4">L4</option>
+                          <option value="Inne">Inne</option>
+                          <option value="Nieusprawiedliwiona">Nieusprawiedliwiona</option>
+                        </select>
+                     </div>
+                     <!-- Disabled fields implementation visual only, kept hidden or shown disabled if requested. 
+                          User said: "Obecny: Nie -> Jacek Bonacek (Szary niemożliwy do kliknięcia)". 
+                          So I basically hide editable fields and show absence reason. -->
+                     <div class="member-details disabled-view">
+                        <div class="form-group-inline disabled">
+                          <label>Godziny</label>
+                          <input type="text" value="0" disabled style="width: 80px">
+                        </div>
+                        <div class="form-group-inline disabled">
+                          <label>Posiłki</label>
+                          <input type="text" value="0" disabled style="width: 60px">
+                        </div>
+                     </div>
+                  </div>
                 </div>
+              </div>
+
+              <div class="add-member-container">
+                <button type="button" class="secondary-btn" @click="addManualMember">
+                  + Dodaj pracownika
+                </button>
               </div>
             </div>
 
             <!-- Common Fields for Bulk -->
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
               <label for="cateringCompany">Firma cateringowa</label>
               <select
                 id="cateringCompany"
@@ -146,12 +170,12 @@
             </div>
 
             <div class="form-group">
-              <label for="notes">Uwagi do całej ekipy</label>
+              <label for="notes">Uwagi do całego wpisu</label>
               <textarea
                 id="notes"
                 v-model="form.notes"
                 rows="3"
-                placeholder="Dodatkowe informacje dla działu księgowości"
+                placeholder="Dodatkowe informacje..."
               ></textarea>
             </div>
 
@@ -287,7 +311,7 @@ const exporting = ref(false)
 const ready = ref(false)
 
 type BatchEntry = {
-  team_member_id: number
+  team_member_id: number | null
   isPresent: boolean
   hours_worked: number
   meals_served: number
@@ -478,8 +502,19 @@ watch(
   { immediate: true }
 )
 
+async function addManualMember() {
+  entries.value.push({
+    team_member_id: null,
+    isPresent: true,
+    hours_worked: 8,
+    meals_served: 0,
+    overnight_stays: 0,
+    absenceReason: 'Urlop'
+  })
+}
+
 async function handleCreate() {
-  if (!form.project_id || !selectedTeamId.value) return
+  if (!form.project_id) return
   
   try {
     saving.value = true
@@ -488,33 +523,40 @@ async function handleCreate() {
     const finalSiteCode = trimmedSiteCode || projectCode || ''
     
     // Construct batch payload
-    const batchPayload = entries.value.map(entry => {
-      let notes = form.notes.trim()
-      let hours = entry.hours_worked
-      let absences = 0
-      
-      if (!entry.isPresent) {
-        hours = 0
-        absences = 1
-        const reason = entry.absenceReason
-        notes = notes ? `Nieobecność: ${reason} | ${notes}` : `Nieobecność: ${reason}`
-      }
+    const batchPayload = entries.value
+      .filter(e => e.team_member_id != null) // Filter out incomplete manual entries
+      .map(entry => {
+        let notes = form.notes.trim()
+        let hours = entry.hours_worked
+        let absences = 0
+        
+        if (!entry.isPresent) {
+          hours = 0
+          absences = 1
+          const reason = entry.absenceReason
+          notes = notes ? `Nieobecność: ${reason} | ${notes}` : `Nieobecność: ${reason}`
+        }
 
-      return {
-        project_id: form.project_id!,
-        date: new Date(form.date).toISOString(),
-        site_code: finalSiteCode,
-        team_member_id: entry.team_member_id,
-        employee_count: 1, // Individual entry counts as 1
-        hours_worked: hours,
-        meals_served: entry.meals_served,
-        overnight_stays: entry.overnight_stays,
-        absences: absences,
-        catering_company_id: form.catering_company_id,
-        accommodation_company_id: form.accommodation_company_id,
-        notes: notes || null
-      }
-    })
+        return {
+          project_id: form.project_id!,
+          date: new Date(form.date).toISOString(),
+          site_code: finalSiteCode,
+          team_member_id: entry.team_member_id!,
+          employee_count: 1, // Individual entry counts as 1
+          hours_worked: hours,
+          meals_served: entry.meals_served,
+          overnight_stays: entry.overnight_stays,
+          absences: absences,
+          catering_company_id: form.catering_company_id,
+          accommodation_company_id: form.accommodation_company_id,
+          notes: notes || null
+        }
+      })
+    
+    if (batchPayload.length === 0) {
+      window.alert('Brak pracowników do zapisania.')
+      return
+    }
 
     await api<WorkLog[]>('/worklogs/batch', {
       method: 'POST',
@@ -603,6 +645,73 @@ onMounted(async () => {
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 0.75rem;
+  transition: all 0.2s;
+}
+
+.member-card.absent {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  opacity: 0.9;
+}
+
+.member-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.member-body {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.member-details {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.member-details.disabled-view {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.member-absence {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+.attendance-toggle label {
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.add-member-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+}
+
+.secondary-btn {
+  background: transparent;
+  border: 1px dashed #64748b;
+  color: #64748b;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.secondary-btn:hover {
+  background: #f1f5f9;
+  border-color: #475569;
+  color: #475569;
 }
 
 .member-header {
@@ -637,11 +746,10 @@ onMounted(async () => {
 }
 
 .absence-select {
-  width: 100%;
   padding: 0.5rem;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
-  background-color: #fef2f2; /* Light red for absence */
+  background-color: #fff;
 }
 
 @media (prefers-color-scheme: dark) {
