@@ -332,7 +332,6 @@ type BatchEntry = {
   hours_worked: number
   meals_served: number
   overnight_stays: number
-  overnight_stays: number
   absenceReason: string
   absenceComment?: string
 }
@@ -475,8 +474,6 @@ watch(selectedTeamId, async (newId) => {
     team_member_id: m.id,
     isPresent: true,
     hours_worked: 8,
-    meals_served: 0,
-    overnight_stays: 0,
     meals_served: 0,
     overnight_stays: 0,
     absenceReason: 'Urlop',
