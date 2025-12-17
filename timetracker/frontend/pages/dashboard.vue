@@ -458,7 +458,8 @@ function formatAccommodation(entry: WorkLog) {
 }
 
 async function loadProjects() {
-  projects.value = await api<Project[]>('/projects/')
+  const fetchedProjects = await api<Project[]>('/projects/')
+  projects.value = fetchedProjects.sort((a, b) => a.code.localeCompare(b.code))
   if (!form.project_id && projects.value.length) {
     form.project_id = projects.value[0].id
     form.site_code = projects.value[0].code
