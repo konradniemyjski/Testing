@@ -15,8 +15,8 @@
       <section style="margin-top: 2rem; display: grid; gap: 2rem;">
         <div>
           <h2>Zarejestruj godziny</h2>
-          <form @submit.prevent="handleCreate" style="display: grid; gap: 1rem;">
-            <div class="form-group">
+          <form @submit.prevent="handleCreate" class="registration-form">
+            <div class="form-group span-2">
               <label for="project">Budowa</label>
               <select id="project" v-model.number="form.project_id" required>
                 <option disabled value="">Wybierz budowę</option>
@@ -25,14 +25,42 @@
                 </option>
               </select>
             </div>
+
             <div class="form-group">
               <label for="date">Data</label>
               <input id="date" v-model="form.date" type="date" required />
             </div>
+
             <div class="form-group">
               <label for="siteCode">Kod budowy</label>
               <input id="siteCode" v-model="form.site_code" type="text" required />
             </div>
+
+            <div class="form-group">
+              <label for="employeeCount">Liczba pracowników</label>
+              <input
+                id="employeeCount"
+                v-model.number="form.employee_count"
+                type="number"
+                min="1"
+                max="1000"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="hoursWorked">Łączna liczba godzin</label>
+              <input
+                id="hoursWorked"
+                v-model.number="form.hours_worked"
+                type="number"
+                min="0.25"
+                max="2000"
+                step="0.25"
+                required
+              />
+            </div>
+
             <div class="form-group">
               <label for="teamSelect">Zespół</label>
               <select
@@ -47,6 +75,7 @@
                 </option>
               </select>
             </div>
+
             <div class="form-group">
               <label for="teamMember">Członek zespołu</label>
               <select
@@ -63,29 +92,7 @@
                 </option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="employeeCount">Liczba pracowników</label>
-              <input
-                id="employeeCount"
-                v-model.number="form.employee_count"
-                type="number"
-                min="1"
-                max="1000"
-                required
-              />
-            </div>
-            <div class="form-group">
-              <label for="hoursWorked">Łączna liczba godzin</label>
-              <input
-                id="hoursWorked"
-                v-model.number="form.hours_worked"
-                type="number"
-                min="0.25"
-                max="2000"
-                step="0.25"
-                required
-              />
-            </div>
+
             <div class="form-group">
               <label for="mealsServed">Posiłki wydane</label>
               <input
@@ -96,6 +103,7 @@
                 max="2000"
               />
             </div>
+
             <div class="form-group">
               <label for="cateringCompany">Firma cateringowa</label>
               <select
@@ -109,6 +117,7 @@
                 </option>
               </select>
             </div>
+
             <div class="form-group">
               <label for="overnightStays">Noclegi</label>
               <input
@@ -119,16 +128,7 @@
                 max="2000"
               />
             </div>
-            <div class="form-group">
-              <label for="absences">Nieobecności (dniówki)</label>
-              <input
-                id="absences"
-                v-model.number="form.absences"
-                type="number"
-                min="0"
-                max="2000"
-              />
-            </div>
+
             <div class="form-group">
               <label for="accommodationCompany">Firma noclegowa</label>
               <select
@@ -142,7 +142,19 @@
                 </option>
               </select>
             </div>
+
             <div class="form-group">
+              <label for="absences">Nieobecności (dniówki)</label>
+              <input
+                id="absences"
+                v-model.number="form.absences"
+                type="number"
+                min="0"
+                max="2000"
+              />
+            </div>
+
+            <div class="form-group span-2">
               <label for="notes">Uwagi</label>
               <textarea
                 id="notes"
@@ -151,9 +163,12 @@
                 placeholder="Dodatkowe informacje dla działu księgowości"
               ></textarea>
             </div>
-            <button class="primary-btn" type="submit" :disabled="saving">
-              {{ saving ? 'Zapisywanie…' : 'Zapisz wpis' }}
-            </button>
+
+            <div class="span-2">
+              <button class="primary-btn" type="submit" :disabled="saving">
+                {{ saving ? 'Zapisywanie…' : 'Zapisz wpis' }}
+              </button>
+            </div>
           </form>
         </div>
 
@@ -538,6 +553,23 @@ onMounted(async () => {
   .author-pill {
     background: rgba(59, 130, 246, 0.25);
     color: #bfdbfe;
+  }
+}
+
+.registration-form {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .registration-form {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem 2rem;
+  }
+  
+  .span-2 {
+    grid-column: span 2;
   }
 }
 </style>
