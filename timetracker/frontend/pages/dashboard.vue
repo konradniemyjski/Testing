@@ -288,7 +288,7 @@
             </tbody>
           </table>
           <p v-else class="text-muted">Brak wpisów. Dodaj pierwszy wpis powyżej!</p>
-        </div>
+
           
           <!-- Pagination Controls -->
           <div v-if="totalPages > 1" class="pagination-controls">
