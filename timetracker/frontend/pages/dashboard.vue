@@ -33,7 +33,14 @@
 
             <div class="form-group">
               <label for="siteCode">Kod budowy</label>
-              <input id="siteCode" v-model="form.site_code" type="text" required />
+              <input 
+                id="siteCode" 
+                v-model="form.site_code" 
+                type="text" 
+                readonly 
+                class="readonly-input"
+                tabindex="-1"
+              />
             </div>
 
             <div class="form-group">
@@ -740,5 +747,20 @@ onMounted(async () => {
   max-width: 600px;
   /* margin-inline: auto; Removed for left alignment */
   width: 100%;
+}
+
+.readonly-input {
+  background-color: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+  border-color: #cbd5e1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .readonly-input {
+    background-color: rgba(15, 23, 42, 0.6);
+    color: #94a3b8;
+    border-color: rgba(148, 163, 184, 0.2);
+  }
 }
 </style>
