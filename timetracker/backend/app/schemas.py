@@ -241,7 +241,7 @@ class WorkLogBase(BaseModel):
     date: datetime
     site_code: str = Field(min_length=1, max_length=50)
     employee_count: int = Field(ge=1, le=1000)
-    hours_worked: float = Field(gt=0, le=2000)
+    hours_worked: float = Field(ge=0, le=2000)
     meals_served: int = Field(default=0, ge=0, le=2000)
     overnight_stays: int = Field(default=0, ge=0, le=2000)
     absences: int = Field(default=0, ge=0, le=2000)
@@ -259,7 +259,7 @@ class WorkLogUpdate(BaseModel):
     date: Optional[datetime] = None
     site_code: Optional[str] = Field(default=None, min_length=1, max_length=50)
     employee_count: Optional[int] = Field(default=None, ge=1, le=1000)
-    hours_worked: Optional[float] = Field(default=None, gt=0, le=2000)
+    hours_worked: Optional[float] = Field(default=None, ge=0, le=2000)
     meals_served: Optional[int] = Field(default=None, ge=0, le=2000)
     overnight_stays: Optional[int] = Field(default=None, ge=0, le=2000)
     absences: Optional[int] = Field(default=None, ge=0, le=2000)
