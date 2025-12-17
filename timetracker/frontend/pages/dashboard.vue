@@ -601,7 +601,7 @@ async function handleCreate() {
     
     // Construct batch payload
     const batchPayload = entries.value
-      .filter(e => e.team_member_id != null) // Filter out incomplete manual entries
+      .filter(e => isUser.value || e.team_member_id != null) // Allow null team_member_id if isUser
       .map(entry => {
         let notes = form.notes.trim()
         let hours = entry.hours_worked
@@ -619,7 +619,7 @@ async function handleCreate() {
           project_id: form.project_id!,
           date: new Date(form.date).toISOString(),
           site_code: finalSiteCode,
-          team_member_id: entry.team_member_id!,
+          team_member_id: entry.team_member_id,
           employee_count: 1, // Individual entry counts as 1
           hours_worked: hours,
           meals_served: entry.meals_served,
