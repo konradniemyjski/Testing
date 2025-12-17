@@ -1,4 +1,4 @@
-FROM node:20-slim AS build
+FROM node:25-slim AS build
 WORKDIR /app
 
 COPY package*.json ./
@@ -8,7 +8,7 @@ RUN npm config set fetch-retry-maxtimeout 600000 \
 COPY . .
 RUN npm run build
 
-FROM node:20-slim AS runner
+FROM node:25-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/.output ./.output

@@ -558,7 +558,7 @@ onMounted(async () => {
 
 .registration-form {
   max-width: 600px;
-  margin-inline: auto; /* Centers the form */
+  /* margin-inline: auto; Removed for left alignment */
   width: 100%;
 }
 </style>
