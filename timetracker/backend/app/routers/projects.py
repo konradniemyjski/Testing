@@ -95,13 +95,7 @@ def delete_project(
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    # Check if project has any worklogs
-    worklogs_count = db.query(models.WorkLog).filter(models.WorkLog.project_id == project_id).count()
-    if worklogs_count > 0:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nie można usunąć budowy z {worklogs_count} powiązanymi wpisami pracy"
-        )
+
     
     db.delete(db_project)
     db.commit()
