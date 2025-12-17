@@ -20,6 +20,7 @@ from .routers import dictionaries as dictionaries_router
 from .routers import projects as projects_router
 from .routers import worklogs as worklogs_router
 from .routers import users as users_router
+from .routers import reports as reports_router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -183,5 +184,6 @@ app.include_router(dictionaries_router.router)
 app.include_router(projects_router.router)
 app.include_router(worklogs_router.router)
 app.include_router(users_router.router)
+app.include_router(reports_router.router)
 
 logger.info("All routers included successfully")
