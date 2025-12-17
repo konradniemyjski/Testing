@@ -43,7 +43,7 @@
               />
             </div>
 
-            <div class="form-group">
+            <div class="form-group" v-if="!isUser">
               <label for="teamSelect">Zespół</label>
               <select
                 id="teamSelect"
@@ -58,8 +58,9 @@
             </div>
 
             <!-- Bulk Entry Section -->
-            <div v-if="selectedTeamId || entries.length" class="bulk-entry-section">
-              <h3>Pracownicy</h3>
+            <div v-if="(selectedTeamId || entries.length) || isUser" class="bulk-entry-section">
+              <h3 v-if="!isUser">Pracownicy</h3>
+              <h3 v-else>Twoje godziny</h3>
               
               <div 
                 v-for="(entry, index) in entries" 
@@ -71,7 +72,7 @@
                   <div class="member-identity">
                     <!-- If manual entry, show select. If pre-filled team member, show text -->
                     <strong v-if="!entry.isManual">
-                      {{ findTeamMember(entry.team_member_id)?.name }}
+                      {{ findTeamMember(entry.team_member_id)?.name || (isUser ? 'Mój własny wpis' : 'Nieznany') }}
                     </strong>
                     <select 
                       v-else 
@@ -97,6 +98,7 @@
                       @click="removeEntry(index)"
                       class="delete-entry-btn"
                       title="Usuń"
+                      v-if="!isUser"
                     >
                       ✕
                     </button>
@@ -158,7 +160,7 @@
                 </div>
               </div>
 
-              <div class="add-member-container">
+              <div class="add-member-container" v-if="!isUser">
                 <button 
                   type="button" 
                   class="secondary-btn" 
@@ -370,6 +372,8 @@ const roleLabel = computed(() => {
   }
   return 'Użytkownik'
 })
+
+const isUser = computed(() => userStore.profile?.role === 'user')
 
 const { teams, teamMembers, accommodationCompanies, cateringCompanies } = storeToRefs(dictionaryStore)
 
@@ -624,7 +628,32 @@ async function handleCreate() {
     
     form.notes = ''
     await loadWorklogs()
-    window.alert('Zapisano wpisy!')
+    await loadWorklogs()
+    
+    // Reset form for next entry
+    if (isUser.value) {
+      entries.value = [{
+        team_member_id: null,
+        isPresent: true,
+        hours_worked: 8,
+        meals_served: 0,
+        overnight_stays: 0,
+        absenceReason: 'Urlop',
+        absenceComment: '',
+        isManual: false
+      }]
+    } else if (selectedTeamId.value) {
+      // Refresh logic for admin/team view if needed, but for now leave as is or basic reset
+       entries.value.forEach(e => {
+         e.hours_worked = 8
+         e.meals_served = 0
+         e.overnight_stays = 0
+         e.isPresent = true
+         e.notes = '' // Custom field not in BatchEntry type but pushed to payload
+       })
+    }
+
+    window.alert('Zapisano wpisy! Lista została odświeżona.')
   } catch (e) {
     console.error(e)
     window.alert('Wystąpił błąd podczas zapisywania.')
