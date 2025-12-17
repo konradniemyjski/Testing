@@ -240,8 +240,10 @@ async def export_worklogs(
     worklogs_list.sort(key=lambda w: (get_worker_name(w), w.date))
 
     workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = "Ewidencja czasu pracy"
+    
+    # Sheet 1: Raw Data
+    ws_data = workbook.active
+    ws_data.title = "Dane szczegółowe"
 
     headers = [
         "Data",
@@ -259,7 +261,7 @@ async def export_worklogs(
         "Uwagi",
         "Autor",
     ]
-    sheet.append(headers)
+    ws_data.append(headers)
 
     # Statistics accumulators
     total_hours = 0.0
@@ -286,8 +288,8 @@ async def export_worklogs(
             worklog.accommodation_company.name if worklog.accommodation_company else ""
         )
         
-        # 2. Append row
-        sheet.append(
+        # 2. Append row to Data Sheet
+        ws_data.append(
             [
                 worklog.date.date().isoformat(),
                 worklog.site_code,
@@ -323,24 +325,23 @@ async def export_worklogs(
         site_stats[site_key]["meals"] += m
         site_stats[site_key]["stays"] += s
 
-    # Adjust column widths for data
-    for column_cells in sheet.columns:
+    # Adjust column widths for Data Sheet
+    for column_cells in ws_data.columns:
         max_length = max((len(str(cell.value)) if cell.value is not None else 0) for cell in column_cells)
         adjusted_width = max_length + 2
         column_letter = column_cells[0].column_letter
-        sheet.column_dimensions[column_letter].width = min(adjusted_width, 40)
+        ws_data.column_dimensions[column_letter].width = min(adjusted_width, 40)
 
-    # Append Summary
-    sheet.append([])
-    sheet.append([])
-    sheet.append(["PODSUMOWANIE"])
+    # Sheet 2: Summary Report
+    ws_report = workbook.create_sheet("Podsumowanie")
     
-    # Global totals
-    sheet.append(["OGÓŁEM", "", "", "", "", "", total_hours, total_meals, "", total_stays])
+    ws_report.append(["PODSUMOWANIE OGÓLNE"])
+    ws_report.append(["Suma godzin", "Suma posiłków", "Suma noclegów"])
+    ws_report.append([total_hours, total_meals, total_stays])
     
-    sheet.append([])
-    sheet.append(["PODSUMOWANIE WG BUDOWY"])
-    sheet.append(["Kod", "Nazwa", "Godziny", "% Całości", "Posiłki", "Noclegi"])
+    ws_report.append([])
+    ws_report.append(["PODSUMOWANIE WG BUDOWY"])
+    ws_report.append(["Kod", "Nazwa", "Godziny", "% Całości", "Posiłki", "Noclegi"])
 
     # Sort sites by code
     sorted_sites = sorted(site_stats.items(), key=lambda x: x[0][0])
@@ -348,7 +349,7 @@ async def export_worklogs(
     for (code, name), stats in sorted_sites:
         hours = stats["hours"]
         percent = (hours / total_hours * 100) if total_hours > 0 else 0
-        sheet.append([
+        ws_report.append([
             code, 
             name, 
             hours, 
@@ -356,6 +357,13 @@ async def export_worklogs(
             stats["meals"], 
             stats["stays"]
         ])
+
+    # Adjust column widths for Report Sheet
+    for column_cells in ws_report.columns:
+        max_length = max((len(str(cell.value)) if cell.value is not None else 0) for cell in column_cells)
+        adjusted_width = max_length + 2
+        column_letter = column_cells[0].column_letter
+        ws_report.column_dimensions[column_letter].width = min(adjusted_width, 40)
 
     stream = BytesIO()
     workbook.save(stream)
@@ -366,7 +374,7 @@ async def export_worklogs(
         "Content-Disposition": f'attachment; filename="{filename}"',
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }
-
+    
     return StreamingResponse(stream, media_type=headers_response["Content-Type"], headers=headers_response)
 
 
