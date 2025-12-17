@@ -14,13 +14,10 @@
           <h2>Dodaj budowę</h2>
           <p class="text-muted">Budowę może dodać każda zalogowana osoba nadzorująca.</p>
           <form @submit.prevent="createProject" style="margin-top: 1rem; display: grid; gap: 1rem;">
+
             <div class="form-group">
-              <label for="projectCode">Kod budowy</label>
-              <input id="projectCode" v-model="form.code" type="text" required placeholder="np. BUD-123" />
-            </div>
-            <div class="form-group">
-              <label for="projectName">Nazwa</label>
-              <input id="projectName" v-model="form.name" type="text" required placeholder="np. Osiedle Zielone" />
+              <label for="projectName">Kod i nazwa</label>
+              <input id="projectName" v-model="form.name" type="text" required placeholder="np. MD0042 - MOST ZIOMEK" />
             </div>
             <div class="form-group">
               <label for="projectDescription">Opis</label>
@@ -94,24 +91,15 @@
       <div class="modal-content" @click.stop>
         <h2>Edytuj budowę</h2>
         <form @submit.prevent="updateProject" style="margin-top: 1rem; display: grid; gap: 1rem;">
+
           <div class="form-group">
-            <label for="editProjectCode">Kod budowy</label>
-            <input 
-              id="editProjectCode" 
-              v-model="editForm.code" 
-              type="text" 
-              required 
-              placeholder="np. BUD-123" 
-            />
-          </div>
-          <div class="form-group">
-            <label for="editProjectName">Nazwa</label>
+            <label for="editProjectName">Kod i nazwa</label>
             <input 
               id="editProjectName" 
               v-model="editForm.name" 
               type="text" 
               required 
-              placeholder="np. Osiedle Zielone" 
+              placeholder="np. MD0042 - MOST ZIOMEK" 
             />
           </div>
           <div class="form-group">
@@ -224,15 +212,40 @@ async function loadProjects() {
 }
 
 async function createProject() {
-  const trimmedCode = form.code.trim()
-  const trimmedName = form.name.trim()
-  if (!trimmedCode) {
-    errorMessage.value = 'Kod budowy jest wymagany.'
+  const trimmedInput = form.name.trim()
+  if (!trimmedInput) {
+    errorMessage.value = 'Kod i nazwa są wymagane.'
     return
   }
-  if (!trimmedName) {
-    errorMessage.value = 'Nazwa budowy jest wymagana.'
-    return
+
+  // Parse code and name from single input
+  // Format expectation: "CODE - NAME" (first hyphen is separator)
+  let code = ''
+  let name = ''
+  
+  const separatorIndex = trimmedInput.indexOf('-')
+  if (separatorIndex > 0) {
+    code = trimmedInput.slice(0, separatorIndex).trim()
+    name = trimmedInput.slice(separatorIndex + 1).trim()
+  } else {
+    // Fallback: take first word as code? Or just error?
+    // User specifically asked for "first member before the dash".
+    // I'll be safe: If no dash, I'll take the first word as code.
+    const firstSpace = trimmedInput.indexOf(' ')
+    if (firstSpace > 0) {
+      code = trimmedInput.slice(0, firstSpace).trim()
+      name = trimmedInput.slice(firstSpace + 1).trim()
+    } else {
+      // Very short input or single word -> treat whole as name, code generated?
+      // Actually backend needs code. Let's force it to be the input if mostly code-like.
+      code = trimmedInput.substring(0, 10).toUpperCase()
+      name = trimmedInput
+    }
+  }
+
+  if (!code || !name) {
+     errorMessage.value = 'Niepoprawny format. Użyj formatu: KOD - NAZWA'
+     return
   }
 
   saving.value = true
@@ -242,15 +255,14 @@ async function createProject() {
   try {
     const trimmedDescription = form.description.trim()
     const payload = {
-      code: trimmedCode,
-      name: trimmedName,
+      code: code,
+      name: name,
       description: trimmedDescription ? trimmedDescription : null
     }
     const project = await api<Project>('/projects/', {
       method: 'POST',
       body: payload
     })
-    form.code = ''
     form.name = ''
     form.description = ''
     successMessage.value = 'Budowa została zapisana.'
@@ -264,8 +276,8 @@ async function createProject() {
 
 function openEditModal(project: Project) {
   editForm.id = project.id
-  editForm.code = project.code
-  editForm.name = project.name
+  // Combine code and name for editing
+  editForm.name = `${project.code} - ${project.name}`
   editForm.description = project.description || ''
   editErrorMessage.value = ''
   showEditModal.value = true
@@ -277,16 +289,29 @@ function closeEditModal() {
 }
 
 async function updateProject() {
-  const trimmedCode = editForm.code.trim()
-  const trimmedName = editForm.name.trim()
+  const trimmedInput = editForm.name.trim()
   
-  if (!trimmedCode) {
-    editErrorMessage.value = 'Kod budowy jest wymagany.'
+  if (!trimmedInput) {
+    editErrorMessage.value = 'Kod i nazwa są wymagane.'
     return
   }
-  if (!trimmedName) {
-    editErrorMessage.value = 'Nazwa budowy jest wymagana.'
-    return
+  
+  let code = ''
+  let name = ''
+  
+  const separatorIndex = trimmedInput.indexOf('-')
+  if (separatorIndex > 0) {
+    code = trimmedInput.slice(0, separatorIndex).trim()
+    name = trimmedInput.slice(separatorIndex + 1).trim()
+  } else {
+    const firstSpace = trimmedInput.indexOf(' ')
+    if (firstSpace > 0) {
+      code = trimmedInput.slice(0, firstSpace).trim()
+      name = trimmedInput.slice(firstSpace + 1).trim()
+    } else {
+      code = trimmedInput.substring(0, 10).toUpperCase()
+      name = trimmedInput
+    }
   }
 
   saving.value = true
@@ -295,8 +320,8 @@ async function updateProject() {
   try {
     const trimmedDescription = editForm.description.trim()
     const payload = {
-      code: trimmedCode,
-      name: trimmedName,
+      code: code,
+      name: name,
       description: trimmedDescription ? trimmedDescription : null
     }
     
