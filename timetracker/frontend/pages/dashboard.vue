@@ -80,7 +80,7 @@
                       required
                     >
                       <option :value="null" disabled>Wybierz pracownika</option>
-                      <option v-for="m in teamMembers" :key="m.id" :value="m.id">
+                      <option v-for="m in getAvailableMembers(entry)" :key="m.id" :value="m.id">
                         {{ m.name }}
                       </option>
                     </select>
@@ -122,6 +122,15 @@
                           <option value="Inne">Inne</option>
                           <option value="Nieusprawiedliwiona">Nieusprawiedliwiona</option>
                         </select>
+                     </div>
+                     <div class="form-group-inline" style="flex-grow: 1;">
+                        <label>Komentarz</label>
+                        <input 
+                          type="text" 
+                          v-model="entry.absenceComment" 
+                          placeholder="Np. wizyta lekarska"
+                          class="absence-comment-input"
+                        >
                      </div>
                      <!-- Disabled fields implementation visual only, kept hidden or shown disabled if requested. 
                           User said: "Obecny: Nie -> Jacek Bonacek (Szary niemożliwy do kliknięcia)". 
@@ -323,7 +332,9 @@ type BatchEntry = {
   hours_worked: number
   meals_served: number
   overnight_stays: number
+  overnight_stays: number
   absenceReason: string
+  absenceComment?: string
 }
 
 const entries = ref<BatchEntry[]>([])
@@ -466,7 +477,10 @@ watch(selectedTeamId, async (newId) => {
     hours_worked: 8,
     meals_served: 0,
     overnight_stays: 0,
-    absenceReason: 'Urlop'
+    meals_served: 0,
+    overnight_stays: 0,
+    absenceReason: 'Urlop',
+    absenceComment: ''
   }))
 
   // 2. Pre-fill common data from history
@@ -509,6 +523,17 @@ watch(
   { immediate: true }
 )
 
+function getAvailableMembers(currentEntry: BatchEntry) {
+  const selectedIds = new Set(
+    entries.value
+      .map(e => e.team_member_id)
+      .filter((id): id is number => id != null)
+  )
+  return teamMembers.value.filter(m => 
+    !selectedIds.has(m.id) || m.id === currentEntry.team_member_id
+  )
+}
+
 async function addManualMember() {
   entries.value.push({
     team_member_id: null,
@@ -541,7 +566,8 @@ async function handleCreate() {
           hours = 0
           absences = 1
           const reason = entry.absenceReason
-          notes = notes ? `Nieobecność: ${reason} | ${notes}` : `Nieobecność: ${reason}`
+          const comment = entry.absenceComment ? ` (${entry.absenceComment})` : ''
+          notes = notes ? `Nieobecność: ${reason}${comment} | ${notes}` : `Nieobecność: ${reason}${comment}`
         }
 
         return {
@@ -732,7 +758,7 @@ onMounted(async () => {
     color: #94a3b8;
   }
   
-  .form-group-inline input, .absence-select {
+  .absence-select, .absence-comment-input {
     background: rgba(15, 23, 42, 0.6);
     border-color: rgba(148, 163, 184, 0.3);
     color: white;
@@ -753,7 +779,14 @@ onMounted(async () => {
   background-color: #f1f5f9;
   color: #64748b;
   cursor: not-allowed;
-  border-color: #cbd5e1;
+  background-color: #fff;
+}
+
+.absence-comment-input {
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  width: 100%;
 }
 
 @media (prefers-color-scheme: dark) {
