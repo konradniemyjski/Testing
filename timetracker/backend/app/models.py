@@ -41,8 +41,12 @@ class User(Base, TimestampMixin):
     role: Mapped[str] = mapped_column(
         String(50), default="user", nullable=False
     )
+    team_id: Mapped[int | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Relationships
+    team: Mapped["Team | None"] = relationship()
     worklogs: Mapped[list["WorkLog"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
