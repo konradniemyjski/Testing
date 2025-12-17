@@ -57,20 +57,47 @@ const success = ref('')
 const error = ref('')
 
 async function handleRegister() {
+  error.value = ''
+  success.value = ''
+
   if (!form.email || !form.password) {
     error.value = 'Login i hasło są wymagane.'
     return
   }
 
+  if (form.password.length < 6) {
+    const msg = 'Hasło musi mieć co najmniej 6 znaków.'
+    error.value = msg
+    window.alert(msg) // Popup notification as requested
+    return
+  }
+  
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    const msg = 'Podaj poprawny adres email.'
+    error.value = msg
+    window.alert(msg)
+    return
+  }
+
   try {
     loading.value = true
-    error.value = ''
-    success.value = ''
     await register({ email: form.email, password: form.password, full_name: form.full_name })
     success.value = 'Konto zostało utworzone! Możesz się teraz zalogować.'
-    setTimeout(() => router.push('/login'), 600)
+    setTimeout(() => router.push('/login'), 1500)
   } catch (err: any) {
-    error.value = 'Nie udało się utworzyć konta. Spróbuj ponownie.'
+    console.error('Registration error:', err)
+    if (err.data?.detail) {
+      if (typeof err.data.detail === 'string') {
+        error.value = err.data.detail
+      } else if (Array.isArray(err.data.detail)) {
+        // Handle Pydantic validation errors
+        error.value = err.data.detail.map((e: any) => `${e.msg}`).join(', ')
+      } else {
+         error.value = 'Wystąpił błąd walidacji danych.'
+      }
+    } else {
+      error.value = 'Nie udało się utworzyć konta. Spróbuj ponownie.'
+    }
   } finally {
     loading.value = false
   }

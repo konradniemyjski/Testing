@@ -96,6 +96,15 @@ async def create_worklogs_batch(
         if not project:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Project {item.project_id} does not exist")
 
+        if current_user.role != "admin" and item.team_member_id is not None:
+             # Force team_member_id to None for non-admins to prevent them from logging for others
+             # Or raise Forbidden. Since UI sets it to None, forcing it here is safer/backwards compatible?
+             # Let's raise 403 to be strict.
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Użytkownicy mogą dodawać wpisy tylko dla siebie."
+             )
+
         if item.team_member_id is not None and not db.get(models.TeamMember, item.team_member_id):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Team member {item.team_member_id} does not exist")
         
@@ -134,6 +143,12 @@ async def create_worklog(
     project = db.get(models.Project, worklog_in.project_id)
     if not project:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project does not exist")
+
+    if current_user.role != "admin" and worklog_in.team_member_id is not None:
+         raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Użytkownicy mogą dodawać wpisy tylko dla siebie."
+         )
 
     if worklog_in.team_member_id is not None and not db.get(models.TeamMember, worklog_in.team_member_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Team member does not exist")
