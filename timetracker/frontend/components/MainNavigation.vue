@@ -10,6 +10,7 @@
         Logowanie czasu
       </button>
       <button
+        v-if="userStore.profile?.role === 'admin'"
         type="button"
         class="nav-btn"
         :class="{ 'nav-btn--active': isActive('/projects') }"
@@ -18,6 +19,7 @@
         Zarządzaj budowami
       </button>
       <button
+        v-if="userStore.profile?.role === 'admin'"
         type="button"
         class="nav-btn"
         :class="{ 'nav-btn--active': isActive('/dictionaries') }"

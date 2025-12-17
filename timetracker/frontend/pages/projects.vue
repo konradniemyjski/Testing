@@ -402,6 +402,10 @@ onMounted(async () => {
     router.replace('/login')
     return
   }
+  if (userStore.profile?.role !== 'admin') {
+    router.replace('/dashboard')
+    return
+  }
   await loadProjects()
 })
 </script>
