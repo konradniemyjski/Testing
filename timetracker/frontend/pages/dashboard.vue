@@ -16,7 +16,7 @@
         <div>
           <h2>Zarejestruj godziny</h2>
           <form @submit.prevent="handleCreate" class="registration-form">
-            <div class="form-group span-2">
+            <div class="form-group">
               <label for="project">Budowa</label>
               <select id="project" v-model.number="form.project_id" required>
                 <option disabled value="">Wybierz budowę</option>
@@ -154,7 +154,7 @@
               />
             </div>
 
-            <div class="form-group span-2">
+            <div class="form-group">
               <label for="notes">Uwagi</label>
               <textarea
                 id="notes"
@@ -164,7 +164,7 @@
               ></textarea>
             </div>
 
-            <div class="span-2">
+            <div>
               <button class="primary-btn" type="submit" :disabled="saving">
                 {{ saving ? 'Zapisywanie…' : 'Zapisz wpis' }}
               </button>
@@ -557,19 +557,8 @@ onMounted(async () => {
 }
 
 .registration-form {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 768px) {
-  .registration-form {
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem 2rem;
-  }
-  
-  .span-2 {
-    grid-column: span 2;
-  }
+  max-width: 600px;
+  margin-inline: auto; /* Centers the form */
+  width: 100%;
 }
 </style>
