@@ -714,43 +714,6 @@ onMounted(async () => {
   color: #475569;
 }
 
-.member-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.member-details {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.form-group-inline {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.form-group-inline label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.form-group-inline input {
-  padding: 0.5rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-}
-
-.absence-select {
-  padding: 0.5rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background-color: #fff;
-}
 
 @media (prefers-color-scheme: dark) {
   .member-card {
