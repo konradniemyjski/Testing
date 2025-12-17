@@ -341,7 +341,6 @@ type BatchEntry = {
   hours_worked: number
   meals_served: number
   overnight_stays: number
-  overnight_stays: number
   absenceReason: string
   absenceComment?: string
   isManual: boolean
@@ -485,8 +484,6 @@ watch(selectedTeamId, async (newId) => {
     team_member_id: m.id,
     isPresent: true,
     hours_worked: 8,
-    meals_served: 0,
-    overnight_stays: 0,
     meals_served: 0,
     overnight_stays: 0,
     absenceReason: 'Urlop',
@@ -799,13 +796,6 @@ onMounted(async () => {
   border-radius: 6px;
   width: 100%;
 }
-
-@media (prefers-color-scheme: dark) {
-  .readonly-input {
-    background-color: rgba(15, 23, 42, 0.6);
-    color: #94a3b8;
-    border-color: rgba(148, 163, 184, 0.2);
-  }
 
 @media (prefers-color-scheme: dark) {
   .readonly-input {
