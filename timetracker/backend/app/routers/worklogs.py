@@ -54,6 +54,32 @@ async def list_worklogs(
     return query.order_by(models.WorkLog.date.desc()).all()
 
 
+@router.get("/latest-by-team", response_model=schemas.WorkLogRead | None)
+async def get_latest_worklog_by_team(
+    team_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
+):
+    """
+    Get the most recent worklog for a specific team.
+    Used for auto-filling form data.
+    """
+    query = (
+        db.query(models.WorkLog)
+        .join(models.TeamMember, models.WorkLog.team_member_id == models.TeamMember.id)
+        .filter(models.TeamMember.team_id == team_id)
+        .order_by(models.WorkLog.date.desc())
+    )
+    
+    # If user is not admin, ensure they can only see their own logs? 
+    # Actually, for suggestions, seeing team's last log might be useful even if not own, 
+    # but strictly adhering to privacy:
+    if current_user.role != "admin":
+        query = query.filter(models.WorkLog.user_id == current_user.id)
+
+    return query.first()
+
+
 @router.post("/", response_model=schemas.WorkLogRead, status_code=status.HTTP_201_CREATED)
 async def create_worklog(
     worklog_in: schemas.WorkLogCreate,

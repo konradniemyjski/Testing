@@ -424,6 +424,26 @@ watch(
   { immediate: true }
 )
 
+watch(selectedTeamId, async (newId) => {
+  if (!newId) return
+  // Fetch latest worklog for this team to pre-fill data
+  try {
+    const lastLog = await api<WorkLog | null>('/worklogs/latest-by-team', {
+      params: { team_id: newId }
+    })
+    
+    if (lastLog) {
+      form.project_id = lastLog.project_id
+      form.site_code = lastLog.site_code
+      form.catering_company_id = lastLog.catering_company_id || null
+      form.accommodation_company_id = lastLog.accommodation_company_id || null
+      // form.hours_worked = lastLog.hours_worked // Optional: decide if we want to copy hours
+    }
+  } catch (e) {
+    console.error('Failed to fetch last worklog for team suggestion', e)
+  }
+})
+
 watch(
   [filteredTeamMembers, selectedTeamId],
   ([members]) => {
