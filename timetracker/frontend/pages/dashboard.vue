@@ -69,8 +69,8 @@
               >
                 <div class="member-header">
                   <div class="member-identity">
-                    <!-- If pre-filled member (has ID and valid), show text. If manual entry, show select -->
-                    <strong v-if="entry.team_member_id && findTeamMember(entry.team_member_id)">
+                    <!-- If manual entry, show select. If pre-filled team member, show text -->
+                    <strong v-if="!entry.isManual">
                       {{ findTeamMember(entry.team_member_id)?.name }}
                     </strong>
                     <select 
@@ -91,6 +91,15 @@
                       <input type="checkbox" v-model="entry.isPresent"> 
                       {{ entry.isPresent ? 'Obecny' : 'Nieobecny' }}
                     </label>
+                    <button 
+                      v-if="entry.isManual" 
+                      type="button" 
+                      @click="removeEntry(index)"
+                      class="delete-entry-btn"
+                      title="Usuń"
+                    >
+                      ✕
+                    </button>
                   </div>
                 </div>
 
@@ -332,8 +341,10 @@ type BatchEntry = {
   hours_worked: number
   meals_served: number
   overnight_stays: number
+  overnight_stays: number
   absenceReason: string
   absenceComment?: string
+  isManual: boolean
 }
 
 const entries = ref<BatchEntry[]>([])
@@ -476,8 +487,11 @@ watch(selectedTeamId, async (newId) => {
     hours_worked: 8,
     meals_served: 0,
     overnight_stays: 0,
+    meals_served: 0,
+    overnight_stays: 0,
     absenceReason: 'Urlop',
-    absenceComment: ''
+    absenceComment: '',
+    isManual: false
   }))
 
   // 2. Pre-fill common data from history
@@ -792,5 +806,26 @@ onMounted(async () => {
     color: #94a3b8;
     border-color: rgba(148, 163, 184, 0.2);
   }
+
+@media (prefers-color-scheme: dark) {
+  .readonly-input {
+    background-color: rgba(15, 23, 42, 0.6);
+    color: #94a3b8;
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+}
+
+.delete-entry-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.5rem;
+  border-radius: 4px;
+}
+.delete-entry-btn:hover {
+  background-color: #fee2e2;
 }
 </style>
