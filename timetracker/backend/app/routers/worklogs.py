@@ -270,6 +270,9 @@ async def export_worklogs(
     
     # Key: (site_code, project_name) -> {hours, meals, stays}
     site_stats = {}
+    
+    # Key: worker_name -> {hours, meals, stays, dates: set}
+    worker_stats = {}
 
     for worklog in worklogs_list:
         # 1. Prepare data for row
@@ -325,6 +328,14 @@ async def export_worklogs(
         site_stats[site_key]["meals"] += m
         site_stats[site_key]["stays"] += s
 
+        if worker_name not in worker_stats:
+            worker_stats[worker_name] = {"hours": 0.0, "meals": 0, "stays": 0, "dates": set()}
+        
+        worker_stats[worker_name]["hours"] += h
+        worker_stats[worker_name]["meals"] += m
+        worker_stats[worker_name]["stays"] += s
+        worker_stats[worker_name]["dates"].add(worklog.date.date())
+
     # Adjust column widths for Data Sheet
     for column_cells in ws_data.columns:
         max_length = max((len(str(cell.value)) if cell.value is not None else 0) for cell in column_cells)
@@ -355,6 +366,22 @@ async def export_worklogs(
             hours, 
             f"{percent:.2f}%", 
             stats["meals"], 
+            stats["stays"]
+        ])
+
+    ws_report.append([])
+    ws_report.append(["PODSUMOWANIE WG OSOBY"])
+    ws_report.append(["Osoba", "Dni pracy", "Godziny", "Posiłki", "Noclegi"])
+
+    # Sort workers by name
+    sorted_workers = sorted(worker_stats.items(), key=lambda x: x[0])
+
+    for name, stats in sorted_workers:
+        ws_report.append([
+            name,
+            len(stats["dates"]),
+            stats["hours"],
+            stats["meals"],
             stats["stays"]
         ])
 
