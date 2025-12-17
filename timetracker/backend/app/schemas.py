@@ -4,13 +4,23 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Generic, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
 
 # Custom type for email/login identifiers
 LoginIdentifier = Annotated[str, Field(min_length=1, max_length=255)]
+
+T = TypeVar("T")
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    """Generic paginated response."""
+    items: list[T]
+    total: int
+    page: int
+    size: int
+    pages: int
 
 
 # ===== Authentication Schemas =====

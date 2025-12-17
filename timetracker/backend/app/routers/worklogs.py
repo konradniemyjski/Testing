@@ -42,16 +42,35 @@ def _build_user_worklog_query(
     return query
 
 
-@router.get("/", response_model=list[schemas.WorkLogRead])
+@router.get("/", response_model=schemas.PaginatedResponse[schemas.WorkLogRead])
 async def list_worklogs(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
     project_id: int | None = Query(default=None),
     start_date: datetime | None = Query(default=None),
     end_date: datetime | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=25, ge=1, le=100),
 ):
     query = _build_user_worklog_query(db, current_user, project_id, start_date, end_date)
-    return query.order_by(models.WorkLog.date.desc()).all()
+    
+    total = query.count()
+    pages = (total + size - 1) // size
+    
+    items = (
+        query.order_by(models.WorkLog.date.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+        .all()
+    )
+    
+    return schemas.PaginatedResponse(
+        items=items,
+        total=total,
+        page=page,
+        size=size,
+        pages=pages
+    )
 
 
 @router.get("/latest-by-team", response_model=schemas.WorkLogRead | None)

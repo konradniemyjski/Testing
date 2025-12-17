@@ -221,14 +221,21 @@
         <div>
           <header style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;">
             <h2>Ostatnie wpisy</h2>
-            <button
-              class="primary-btn"
-              type="button"
-              @click="exportWorklogs"
-              :disabled="exporting || !worklogs.length"
-            >
-              {{ exporting ? 'Przygotowywanie…' : 'Eksportuj do XLSX' }}
-            </button>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <select v-model="pageSize" @change="handlePageSizeChange" style="padding: 0.25rem; border-radius: 4px; border: 1px solid #ccc;">
+                <option :value="10">10 na stronę</option>
+                <option :value="25">25 na stronę</option>
+                <option :value="50">50 na stronę</option>
+              </select>
+              <button
+                class="primary-btn"
+                type="button"
+                @click="exportWorklogs"
+                :disabled="exporting || !worklogs.length"
+              >
+                {{ exporting ? 'Przygotowywanie…' : 'Eksportuj do XLSX' }}
+              </button>
+            </div>
           </header>
 
           <table v-if="worklogs.length" class="table">
@@ -282,6 +289,28 @@
           </table>
           <p v-else class="text-muted">Brak wpisów. Dodaj pierwszy wpis powyżej!</p>
         </div>
+          
+          <!-- Pagination Controls -->
+          <div v-if="totalPages > 1" class="pagination-controls">
+            <button @click="changePage(1)" :disabled="currentPage === 1" class="pagination-btn">
+              &lt;&lt;
+            </button>
+            <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1" class="pagination-btn">
+              &lt;
+            </button>
+            
+            <span class="pagination-info">
+              Strona {{ currentPage }} z {{ totalPages }}
+            </span>
+            
+            <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages" class="pagination-btn">
+              &gt;
+            </button>
+            <button @click="changePage(totalPages)" :disabled="currentPage === totalPages" class="pagination-btn">
+              &gt;&gt;
+            </button>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -307,6 +336,14 @@ type WorkLogUser = {
   id: number
   email: string
   full_name?: string | null
+}
+
+type PaginatedWorkLogs = {
+  items: WorkLog[]
+  total: number
+  page: number
+  size: number
+  pages: number
 }
 
 type WorkLog = {
@@ -337,6 +374,12 @@ const api = useApi()
 
 const projects = ref<Project[]>([])
 const worklogs = ref<WorkLog[]>([])
+// Pagination state
+const currentPage = ref(1)
+const pageSize = ref(25)
+const totalItems = ref(0)
+const totalPages = ref(0)
+
 const saving = ref(false)
 const exporting = ref(false)
 const ready = ref(false)
@@ -470,7 +513,30 @@ async function loadProjects() {
 }
 
 async function loadWorklogs() {
-  worklogs.value = await api<WorkLog[]>('/worklogs/')
+  try {
+    const response = await api<PaginatedWorkLogs>('/worklogs/', {
+      params: {
+        page: currentPage.value,
+        size: pageSize.value
+      }
+    })
+    worklogs.value = response.items
+    totalItems.value = response.total
+    totalPages.value = response.pages
+  } catch (e) {
+    console.error('Failed to load worklogs', e)
+  }
+}
+
+async function changePage(page: number) {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+  await loadWorklogs()
+}
+
+async function handlePageSizeChange() {
+  currentPage.value = 1
+  await loadWorklogs()
 }
 
 watch(
@@ -796,6 +862,33 @@ onMounted(async () => {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.pagination-btn {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f3f3;
+}
+
+.pagination-info {
+  font-weight: 500;
+  margin: 0 0.5rem;
 }
 
 .add-member-container {
