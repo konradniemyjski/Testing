@@ -93,12 +93,11 @@
                       {{ entry.isPresent ? 'Obecny' : 'Nieobecny' }}
                     </label>
                     <button 
-                      v-if="entry.isManual" 
+                      v-if="entry.isManual && !isUser" 
                       type="button" 
                       @click="removeEntry(index)"
                       class="delete-entry-btn"
                       title="Usuń"
-                      v-if="!isUser"
                     >
                       ✕
                     </button>
@@ -532,6 +531,22 @@ watch(selectedTeamId, async (newId) => {
 
 // Removed watcher for filteredTeamMembers since we manage 'entries' manually now
 
+watch(isUser, (val) => {
+  if (val) {
+    // If user, initialize one empty entry for themselves
+    entries.value = [{
+      team_member_id: null,
+      isPresent: true,
+      hours_worked: 8,
+      meals_served: 0,
+      overnight_stays: 0,
+      absenceReason: 'Urlop',
+      absenceComment: '',
+      isManual: false
+    }]
+  }
+}, { immediate: true })
+
 
 watch(
   accommodationCompanies,
@@ -627,7 +642,6 @@ async function handleCreate() {
     })
     
     form.notes = ''
-    await loadWorklogs()
     await loadWorklogs()
     
     // Reset form for next entry
