@@ -159,7 +159,12 @@
               </div>
 
               <div class="add-member-container">
-                <button type="button" class="secondary-btn" @click="addManualMember">
+                <button 
+                  type="button" 
+                  class="secondary-btn" 
+                  @click="addManualMember"
+                  :disabled="!canAddMember"
+                >
                   + Dodaj pracownika
                 </button>
               </div>
@@ -374,6 +379,18 @@ const filteredTeamMembers = computed(() => {
     return teamMembers.value
   }
   return teamMembers.value.filter((member) => member.team_id === selectedTeamId.value)
+  return teamMembers.value.filter((member) => member.team_id === selectedTeamId.value)
+})
+
+const canAddMember = computed(() => {
+  // Count unique selected IDs (excluding nulls)
+  const selectedIds = new Set(
+    entries.value
+      .map(e => e.team_member_id)
+      .filter((id): id is number => id != null)
+  )
+  // If we have selected everyone from the dictionary, we can't add more
+  return selectedIds.size < teamMembers.value.length
 })
 
 function findProject(id: number | null | undefined) {
@@ -755,6 +772,12 @@ onMounted(async () => {
   color: #475569;
 }
 
+.secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: solid;
+}
+
 
 @media (prefers-color-scheme: dark) {
   .member-card {
@@ -802,6 +825,12 @@ onMounted(async () => {
     background-color: rgba(15, 23, 42, 0.6);
     color: #94a3b8;
     border-color: rgba(148, 163, 184, 0.2);
+  }
+
+  /* Fix for absent card in dark mode */
+  .member-card.absent {
+    background: rgba(127, 29, 29, 0.15); /* Subtle dark red/faded background */
+    border-color: rgba(220, 38, 38, 0.2);
   }
 }
 
