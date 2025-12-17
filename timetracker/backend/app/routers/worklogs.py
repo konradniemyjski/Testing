@@ -80,6 +80,51 @@ async def get_latest_worklog_by_team(
     return query.first()
 
 
+@router.post("/batch", response_model=list[schemas.WorkLogRead], status_code=status.HTTP_201_CREATED)
+async def create_worklogs_batch(
+    worklogs_in: list[schemas.WorkLogCreate],
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
+):
+    """
+    Create multiple worklogs at once.
+    """
+    created_worklogs = []
+    
+    for item in worklogs_in:
+        project = db.get(models.Project, item.project_id)
+        if not project:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Project {item.project_id} does not exist")
+
+        if item.team_member_id is not None and not db.get(models.TeamMember, item.team_member_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Team member {item.team_member_id} does not exist")
+        
+        if item.accommodation_company_id is not None and not db.get(models.AccommodationCompany, item.accommodation_company_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Accommodation company does not exist")
+            
+        if item.catering_company_id is not None and not db.get(models.CateringCompany, item.catering_company_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Catering company does not exist")
+
+        worklog_data = item.model_dump()
+        worklog_data["site_code"] = worklog_data["site_code"].strip()
+        if project.code and not worklog_data["site_code"]:
+            worklog_data["site_code"] = project.code
+            
+        if worklog_data.get("notes"):
+            worklog_data["notes"] = worklog_data["notes"].strip() or None
+            
+        worklog = models.WorkLog(**worklog_data, user_id=current_user.id)
+        db.add(worklog)
+        created_worklogs.append(worklog)
+
+    db.commit()
+    
+    for w in created_worklogs:
+        db.refresh(w)
+        
+    return created_worklogs
+
+
 @router.post("/", response_model=schemas.WorkLogRead, status_code=status.HTTP_201_CREATED)
 async def create_worklog(
     worklog_in: schemas.WorkLogCreate,

@@ -76,34 +76,47 @@
               </select>
             </div>
 
-            <div class="form-group">
-              <label for="teamMember">Członek zespołu</label>
-              <select
-                id="teamMember"
-                v-model.number="form.team_member_id"
-                :disabled="!filteredTeamMembers.length"
-                required
-              >
-                <option v-if="!filteredTeamMembers.length" disabled value="">
-                  Brak pracowników w wybranym zespole
-                </option>
-                <option v-for="member in filteredTeamMembers" :key="member.id" :value="member.id">
-                  {{ member.name }}
-                </option>
-              </select>
+            <!-- Bulk Entry Section -->
+            <div v-if="selectedTeamId" class="bulk-entry-section">
+              <h3>Członkowie zespołu ({{ filteredTeamMembers.length }})</h3>
+              
+              <div v-for="(entry, index) in entries" :key="entry.team_member_id" class="member-card">
+                <div class="member-header">
+                  <strong>{{ findTeamMember(entry.team_member_id)?.name }}</strong>
+                  <div class="attendance-toggle">
+                    <label>
+                      <input type="checkbox" v-model="entry.isPresent"> Obecny
+                    </label>
+                  </div>
+                </div>
+
+                <div v-if="entry.isPresent" class="member-details">
+                  <div class="form-group-inline">
+                    <label>Godz.</label>
+                    <input type="number" v-model.number="entry.hours_worked" min="0.25" step="0.25" style="width: 80px">
+                  </div>
+                  <div class="form-group-inline">
+                    <label>Posiłki</label>
+                    <input type="number" v-model.number="entry.meals_served" min="0" style="width: 60px">
+                  </div>
+                  <div class="form-group-inline">
+                    <label>Nocleg</label>
+                    <input type="number" v-model.number="entry.overnight_stays" min="0" style="width: 60px">
+                  </div>
+                </div>
+
+                <div v-else class="member-absence">
+                  <select v-model="entry.absenceReason" class="absence-select">
+                    <option value="Urlop">Urlop</option>
+                    <option value="L4">L4</option>
+                    <option value="Inne">Inne</option>
+                    <option value="Nieusprawiedliwiona">Nieusprawiedliwiona</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div class="form-group">
-              <label for="mealsServed">Posiłki wydane</label>
-              <input
-                id="mealsServed"
-                v-model.number="form.meals_served"
-                type="number"
-                min="0"
-                max="2000"
-              />
-            </div>
-
+            <!-- Common Fields for Bulk -->
             <div class="form-group">
               <label for="cateringCompany">Firma cateringowa</label>
               <select
@@ -116,17 +129,6 @@
                   {{ company.name }} ({{ company.tax_id }})
                 </option>
               </select>
-            </div>
-
-            <div class="form-group">
-              <label for="overnightStays">Noclegi</label>
-              <input
-                id="overnightStays"
-                v-model.number="form.overnight_stays"
-                type="number"
-                min="0"
-                max="2000"
-              />
             </div>
 
             <div class="form-group">
@@ -144,18 +146,7 @@
             </div>
 
             <div class="form-group">
-              <label for="absences">Nieobecności (dniówki)</label>
-              <input
-                id="absences"
-                v-model.number="form.absences"
-                type="number"
-                min="0"
-                max="2000"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="notes">Uwagi</label>
+              <label for="notes">Uwagi do całej ekipy</label>
               <textarea
                 id="notes"
                 v-model="form.notes"
@@ -166,7 +157,7 @@
 
             <div>
               <button class="primary-btn" type="submit" :disabled="saving">
-                {{ saving ? 'Zapisywanie…' : 'Zapisz wpis' }}
+                {{ saving ? 'Zapisywanie…' : 'Zapisz wpisy' }}
               </button>
             </div>
           </form>
@@ -294,18 +285,24 @@ const worklogs = ref<WorkLog[]>([])
 const saving = ref(false)
 const exporting = ref(false)
 const ready = ref(false)
+
+type BatchEntry = {
+  team_member_id: number
+  isPresent: boolean
+  hours_worked: number
+  meals_served: number
+  overnight_stays: number
+  absenceReason: string
+}
+
+const entries = ref<BatchEntry[]>([])
+
 const form = reactive({
   project_id: null as number | null,
   date: new Date().toISOString().slice(0, 10),
   site_code: '',
-  employee_count: 1,
-  hours_worked: 8,
-  meals_served: 0,
-  overnight_stays: 0,
-  absences: 0,
-  team_member_id: null as number | null,
-  accommodation_company_id: null as number | null,
   catering_company_id: null as number | null,
+  accommodation_company_id: null as number | null,
   notes: ''
 })
 
@@ -425,8 +422,23 @@ watch(
 )
 
 watch(selectedTeamId, async (newId) => {
-  if (!newId) return
-  // Fetch latest worklog for this team to pre-fill data
+  if (!newId) {
+    entries.value = []
+    return
+  }
+  
+  // 1. Initialize entries for all members
+  const members = teamMembers.value.filter(m => m.team_id === newId)
+  entries.value = members.map(m => ({
+    team_member_id: m.id,
+    isPresent: true,
+    hours_worked: 8,
+    meals_served: 0,
+    overnight_stays: 0,
+    absenceReason: 'Urlop'
+  }))
+
+  // 2. Pre-fill common data from history
   try {
     const lastLog = await api<WorkLog | null>('/worklogs/latest-by-team', {
       params: { team_id: newId }
@@ -437,27 +449,14 @@ watch(selectedTeamId, async (newId) => {
       form.site_code = lastLog.site_code
       form.catering_company_id = lastLog.catering_company_id || null
       form.accommodation_company_id = lastLog.accommodation_company_id || null
-      // form.hours_worked = lastLog.hours_worked // Optional: decide if we want to copy hours
     }
   } catch (e) {
     console.error('Failed to fetch last worklog for team suggestion', e)
   }
 })
 
-watch(
-  [filteredTeamMembers, selectedTeamId],
-  ([members]) => {
-    if (members.length === 0) {
-      form.team_member_id = null
-      return
-    }
-    const exists = members.some((member) => member.id === form.team_member_id)
-    if (!exists) {
-      form.team_member_id = members[0].id
-    }
-  },
-  { immediate: true }
-)
+// Removed watcher for filteredTeamMembers since we manage 'entries' manually now
+
 
 watch(
   accommodationCompanies,
@@ -480,32 +479,54 @@ watch(
 )
 
 async function handleCreate() {
-  if (!form.project_id) return
+  if (!form.project_id || !selectedTeamId.value) return
+  
   try {
     saving.value = true
     const trimmedSiteCode = form.site_code.trim()
-    const selectionSummary = [
-      form.team_member_id ? `Zespół: ${findTeamMember(form.team_member_id)?.name}` : null,
-      form.accommodation_company_id
-        ? `Noclegi: ${findAccommodationCompany(form.accommodation_company_id)?.name}`
-        : null,
-      form.catering_company_id ? `Posiłki: ${findCateringCompany(form.catering_company_id)?.name}` : null
-    ].filter(Boolean)
-    const supplementalNotes = selectionSummary.length ? selectionSummary.join(' | ') : ''
-    const userNotes = form.notes.trim()
-    const payload = {
-      ...form,
-      site_code: trimmedSiteCode || findProject(form.project_id)?.code || '',
-      date: new Date(form.date).toISOString(),
-      notes: [supplementalNotes, userNotes].filter(Boolean).join(' | ') || null
-    }
-    form.site_code = trimmedSiteCode || findProject(form.project_id)?.code || ''
-    await api<WorkLog>('/worklogs/', {
-      method: 'POST',
-      body: payload
+    const projectCode = findProject(form.project_id)?.code || ''
+    const finalSiteCode = trimmedSiteCode || projectCode || ''
+    
+    // Construct batch payload
+    const batchPayload = entries.value.map(entry => {
+      let notes = form.notes.trim()
+      let hours = entry.hours_worked
+      let absences = 0
+      
+      if (!entry.isPresent) {
+        hours = 0
+        absences = 1
+        const reason = entry.absenceReason
+        notes = notes ? `Nieobecność: ${reason} | ${notes}` : `Nieobecność: ${reason}`
+      }
+
+      return {
+        project_id: form.project_id!,
+        date: new Date(form.date).toISOString(),
+        site_code: finalSiteCode,
+        team_member_id: entry.team_member_id,
+        employee_count: 1, // Individual entry counts as 1
+        hours_worked: hours,
+        meals_served: entry.meals_served,
+        overnight_stays: entry.overnight_stays,
+        absences: absences,
+        catering_company_id: form.catering_company_id,
+        accommodation_company_id: form.accommodation_company_id,
+        notes: notes || null
+      }
     })
+
+    await api<WorkLog[]>('/worklogs/batch', {
+      method: 'POST',
+      body: batchPayload
+    })
+    
     form.notes = ''
     await loadWorklogs()
+    window.alert('Zapisano wpisy!')
+  } catch (e) {
+    console.error(e)
+    window.alert('Wystąpił błąd podczas zapisywania.')
   } finally {
     saving.value = false
   }
@@ -573,6 +594,74 @@ onMounted(async () => {
   .author-pill {
     background: rgba(59, 130, 246, 0.25);
     color: #bfdbfe;
+  }
+}
+
+.member-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.member-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.member-details {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-group-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-group-inline label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.form-group-inline input {
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.absence-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: #fef2f2; /* Light red for absence */
+}
+
+@media (prefers-color-scheme: dark) {
+  .member-card {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+  
+  .form-group-inline label {
+    color: #94a3b8;
+  }
+  
+  .form-group-inline input, .absence-select {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(148, 163, 184, 0.3);
+    color: white;
+  }
+  
+  .absence-select {
+    background-color: rgba(127, 29, 29, 0.3); /* Dark red for absence */
   }
 }
 
