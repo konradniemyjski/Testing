@@ -221,14 +221,23 @@ async def export_worklogs(
     end_date: datetime | None = Query(default=None),
 ):
     query = _build_user_worklog_query(db, current_user, project_id, start_date, end_date)
-    worklogs = (
+    worklogs_list = (
         query.options(
             joinedload(models.WorkLog.project),
             joinedload(models.WorkLog.team_member).joinedload(models.TeamMember.team),
         )
-        .order_by(models.WorkLog.date.asc(), models.WorkLog.id.asc())
         .all()
     )
+
+    # Sort by Worker Name, then Date
+    def get_worker_name(w: models.WorkLog) -> str:
+        if w.team_member and w.team_member.name:
+            return w.team_member.name
+        if w.user:
+             return w.user.full_name or w.user.email or ""
+        return ""
+
+    worklogs_list.sort(key=lambda w: (get_worker_name(w), w.date))
 
     workbook = Workbook()
     sheet = workbook.active
@@ -252,7 +261,16 @@ async def export_worklogs(
     ]
     sheet.append(headers)
 
-    for worklog in worklogs:
+    # Statistics accumulators
+    total_hours = 0.0
+    total_meals = 0
+    total_stays = 0
+    
+    # Key: (site_code, project_name) -> {hours, meals, stays}
+    site_stats = {}
+
+    for worklog in worklogs_list:
+        # 1. Prepare data for row
         project_name = worklog.project.name if worklog.project else ""
         author = worklog.user
         if author is not None:
@@ -260,18 +278,21 @@ async def export_worklogs(
             author_label = f"{display_name} (ID: {author.id})"
         else:
             author_label = f"ID: {worklog.user_id}"
-        team_member = worklog.team_member.name if worklog.team_member else ""
+        
+        worker_name = get_worker_name(worklog)
         team_name = worklog.team_member.team.name if worklog.team_member and worklog.team_member.team else ""
         catering_company = worklog.catering_company.name if worklog.catering_company else ""
         accommodation_company = (
             worklog.accommodation_company.name if worklog.accommodation_company else ""
         )
+        
+        # 2. Append row
         sheet.append(
             [
                 worklog.date.date().isoformat(),
                 worklog.site_code,
                 project_name,
-                team_member,
+                worker_name,
                 team_name,
                 worklog.employee_count,
                 float(worklog.hours_worked),
@@ -285,11 +306,56 @@ async def export_worklogs(
             ]
         )
 
+        # 3. Accumulate stats
+        h = float(worklog.hours_worked)
+        m = worklog.meals_served
+        s = worklog.overnight_stays
+
+        total_hours += h
+        total_meals += m
+        total_stays += s
+
+        site_key = (worklog.site_code, project_name)
+        if site_key not in site_stats:
+            site_stats[site_key] = {"hours": 0.0, "meals": 0, "stays": 0}
+        
+        site_stats[site_key]["hours"] += h
+        site_stats[site_key]["meals"] += m
+        site_stats[site_key]["stays"] += s
+
+    # Adjust column widths for data
     for column_cells in sheet.columns:
         max_length = max((len(str(cell.value)) if cell.value is not None else 0) for cell in column_cells)
         adjusted_width = max_length + 2
         column_letter = column_cells[0].column_letter
         sheet.column_dimensions[column_letter].width = min(adjusted_width, 40)
+
+    # Append Summary
+    sheet.append([])
+    sheet.append([])
+    sheet.append(["PODSUMOWANIE"])
+    
+    # Global totals
+    sheet.append(["OGÓŁEM", "", "", "", "", "", total_hours, total_meals, "", total_stays])
+    
+    sheet.append([])
+    sheet.append(["PODSUMOWANIE WG BUDOWY"])
+    sheet.append(["Kod", "Nazwa", "Godziny", "% Całości", "Posiłki", "Noclegi"])
+
+    # Sort sites by code
+    sorted_sites = sorted(site_stats.items(), key=lambda x: x[0][0])
+    
+    for (code, name), stats in sorted_sites:
+        hours = stats["hours"]
+        percent = (hours / total_hours * 100) if total_hours > 0 else 0
+        sheet.append([
+            code, 
+            name, 
+            hours, 
+            f"{percent:.2f}%", 
+            stats["meals"], 
+            stats["stays"]
+        ])
 
     stream = BytesIO()
     workbook.save(stream)
