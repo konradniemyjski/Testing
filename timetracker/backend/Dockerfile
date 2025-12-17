@@ -1,4 +1,4 @@
-FROM python:latest AS base
+FROM public.ecr.aws/docker/library/python:latest AS base
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
