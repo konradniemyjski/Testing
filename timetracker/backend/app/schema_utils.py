@@ -396,6 +396,30 @@ def ensure_hours_column_migration(engine):
         except SQLAlchemyError as e:
             logger.error(f"Error making hours column nullable: {e}")
 
+
+def ensure_users_columns(engine):
+    """Ensure the users table includes team_id column."""
+    inspector = inspect(engine)
+
+    if "users" not in inspector.get_table_names():
+        logger.info("Table users doesn't exist yet, skipping column check")
+        return
+
+    columns = [col["name"] for col in inspector.get_columns("users")]
+    
+    if "team_id" not in columns:
+        logger.info("Adding team_id column to users table")
+        alter_sql = text("ALTER TABLE users ADD COLUMN team_id INTEGER")
+        
+        try:
+            with engine.connect() as conn:
+                conn.execute(alter_sql)
+                conn.commit()
+            logger.info("Successfully added team_id column to users")
+        except SQLAlchemyError as e:
+            logger.error(f"Error adding team_id column to users: {e}")
+
+
 def ensure_all_columns(engine):
     """Main function to ensure all tables have required columns."""
     logger.info("Checking and adding missing columns...")
@@ -418,6 +442,9 @@ def ensure_all_columns(engine):
     
     # Ensure worklog_absences columns (if that table exists)
     ensure_worklog_absences_column(engine)
+    
+    # Ensure users columns
+    ensure_users_columns(engine)
     
     logger.info("Column check complete")
 
