@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
+from copy import copy
 
 from .. import auth, models, schemas
 from ..db import get_db
@@ -150,11 +151,11 @@ async def export_monthly_excel(
                     source_cell = ws.cell(row=2, column=col)
                     target_cell = ws.cell(row=row, column=col)
                     if source_cell.has_style:
-                        target_cell.font = source_cell.font.copy()
-                        target_cell.border = source_cell.border.copy()
-                        target_cell.fill = source_cell.fill.copy()
+                        target_cell.font = copy(source_cell.font)
+                        target_cell.border = copy(source_cell.border)
+                        target_cell.fill = copy(source_cell.fill)
                         target_cell.number_format = source_cell.number_format
-                        target_cell.alignment = source_cell.alignment.copy()
+                        target_cell.alignment = copy(source_cell.alignment)
 
     # Save to buffer
     stream = BytesIO()
