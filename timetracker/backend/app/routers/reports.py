@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 
 from .. import auth, models, schemas
+from ..routers.worklogs import _build_user_worklog_query
 from ..db import get_db
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -64,6 +65,7 @@ async def export_monthly_excel(
     current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
     year: int = Query(..., description="Year of the report"),
     month: int = Query(..., description="Month of the report"),
+    project_id: int | None = Query(default=None, description="Project ID filter"),
 ):
     # Calculate date range
     try:
@@ -75,31 +77,46 @@ async def export_monthly_excel(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid year or month")
         
-    # Query Data
+    # Query Data using shared logic from worklogs.py
+    # This ensures consistency in permissions and filtering
+    base_query = _build_user_worklog_query(db, current_user, project_id, start_date, end_date)
+    
+    # Add eager loading required for the report
     query = (
-        db.query(models.WorkLog)
+        base_query
         .options(joinedload(models.WorkLog.user).joinedload(models.User.team))
-        .filter(models.WorkLog.date >= start_date)
-        .filter(models.WorkLog.date < end_date)
+        .options(joinedload(models.WorkLog.team_member).joinedload(models.TeamMember.team))
     )
     
     worklogs = query.all()
     
-    # Organize data by User
-    # Map user_id -> { user_obj, days: { day: hours } }
+    # Organize data by Worker (TeamMember or User fallback)
+    # Map worker_key -> { name, team, rate, days: { day: hours } }
     user_data = {}
     
     for log in worklogs:
-        uid = log.user_id
-        if uid not in user_data:
-            user_data[uid] = {
-                "user": log.user,
+        # Determine unique key and worker details
+        if log.team_member_id:
+            key = f"tm_{log.team_member_id}"
+            worker_name = log.team_member.name
+            team_obj = log.team_member.team
+            rate = 0.0 # TeamMember currently has no rate field
+        else:
+            key = f"u_{log.user_id}"
+            worker_name = log.user.full_name or log.user.email
+            team_obj = log.user.team
+            rate = log.user.hourly_rate or 0.0
+
+        if key not in user_data:
+            user_data[key] = {
+                "name": worker_name,
+                "team": team_obj,
+                "rate": rate,
                 "days": {}
             }
         
         day = log.date.day
-        # Sum hours if multiple logs per day?
-        user_data[uid]["days"][day] = user_data[uid]["days"].get(day, 0) + log.hours_worked
+        user_data[key]["days"][day] = user_data[key]["days"].get(day, 0) + log.hours_worked
 
     # Create Workbook In-Memory
     from openpyxl import Workbook
@@ -182,41 +199,40 @@ async def export_monthly_excel(
 
     start_row = 2
     users_sorted = sorted(user_data.values(), key=lambda x: (
-        (x["user"].team.name if x["user"].team else ""), 
-        (x["user"].full_name or "")
+        (x["team"].name if x["team"] else ""), 
+        (x["name"] or "")
     ))
     
     # Fill Data
     for idx, item in enumerate(users_sorted):
         row = start_row + idx
-        user = item["user"]
-        days = item["days"]
         
-        # A: Index
+        # A: LP
         c = ws.cell(row=row, column=1, value=idx + 1)
         c.border = medium_border
         c.alignment = center_align
         
         # B: Name
-        c = ws.cell(row=row, column=2, value=user.full_name or user.email)
+        c = ws.cell(row=row, column=2, value=item["name"])
         c.border = medium_border
         c.alignment = left_align
         
         # C: Rate
-        rate = user.hourly_rate if user.hourly_rate else 0.0
-        c = ws.cell(row=row, column=3, value=rate)
+        # For now assuming 0 if not set, or taking from User. TeamMember model has no rate.
+        c = ws.cell(row=row, column=3, value=item["rate"])
         c.border = medium_border
         c.alignment = center_align
 
-        # D: Buffer (Empty)
-        c = ws.cell(row=row, column=4, value="")
+        # D: Unknown/Extra
+        c = ws.cell(row=row, column=4)
         c.border = medium_border
         c.alignment = center_align
         
         # E (5) to AI (35): Days 1-31
+        # E (5) to AI (35): Days 1-31
         for day_curr in range(1, 32):
             col_idx = 4 + day_curr
-            val = days.get(day_curr, None)
+            val = item["days"].get(day_curr, None)
             c = ws.cell(row=row, column=col_idx, value=val)
             c.border = medium_border
             c.alignment = center_align

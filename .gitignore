@@ -24,3 +24,4 @@ ENV/
 .idea/
 .DS_Store
 lista.xlsx
+timetracker/exported_report.xlsx
