@@ -262,3 +262,116 @@ async def export_monthly_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
+@router.get("/participants", response_model=list[str])
+async def get_project_participants(
+    project_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
+):
+    # Query distinct names from worklogs for a project
+    # We prioritize TeamMember names, fallback to User names
+    # Effectively we want unique names of people who worked on the project
+    
+    # Using specific query to get distinct names
+    query = (
+        db.query(models.WorkLog)
+        .options(joinedload(models.WorkLog.team_member), joinedload(models.WorkLog.user))
+        .filter(models.WorkLog.project_id == project_id)
+    )
+    
+    if current_user.role != "admin":
+        # Non-admins restricted to their own logs
+        query = query.filter(models.WorkLog.user_id == current_user.id)
+        
+    worklogs = query.all()
+    
+    names = set()
+    for log in worklogs:
+        if log.team_member and log.team_member.name:
+            names.add(log.team_member.name)
+        elif log.user.full_name:
+            names.add(log.user.full_name)
+        else:
+            names.add(log.user.email)
+            
+    return sorted(list(names))
+
+@router.get("/team-work", response_model=schemas.PaginatedResponse[schemas.WorkLogRead])
+async def get_team_work_report(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
+    team_id: int,
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=50, ge=1, le=100),
+):
+    # Retrieve logs for a specific team. 
+    # Logic: Log associated with a TeamMember of that team OR User of that team
+    base_query = _build_user_worklog_query(db, current_user, None, start_date, end_date)
+    
+    # Join necessary tables to filter by team
+    query = (
+        base_query
+        .join(models.WorkLog.team_member, isouter=True)
+        .join(models.WorkLog.user, isouter=True)
+        .filter(
+            (models.TeamMember.team_id == team_id) | 
+            ((models.WorkLog.team_member_id == None) & (models.User.team_id == team_id))
+        )
+    )
+    
+    total = query.count()
+    pages = (total + size - 1) // size
+    items = query.offset((page - 1) * size).limit(size).all()
+    
+    return schemas.PaginatedResponse(items=items, total=total, page=page, size=size, pages=pages)
+
+@router.get("/accommodation", response_model=schemas.PaginatedResponse[schemas.WorkLogRead])
+async def get_accommodation_report(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
+    company_id: int | None = Query(default=None),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=50, ge=1, le=100),
+):
+    query = _build_user_worklog_query(db, current_user, None, start_date, end_date)
+    
+    # Filter for logs with accommodation
+    query = query.filter(models.WorkLog.overnight_stays > 0)
+    
+    if company_id:
+        query = query.filter(models.WorkLog.accommodation_company_id == company_id)
+        
+    total = query.count()
+    pages = (total + size - 1) // size
+    items = query.offset((page - 1) * size).limit(size).all()
+    
+    return schemas.PaginatedResponse(items=items, total=total, page=page, size=size, pages=pages)
+
+@router.get("/catering", response_model=schemas.PaginatedResponse[schemas.WorkLogRead])
+async def get_catering_report(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
+    company_id: int | None = Query(default=None),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=50, ge=1, le=100),
+):
+    query = _build_user_worklog_query(db, current_user, None, start_date, end_date)
+    
+    # Filter for logs with meals
+    query = query.filter(models.WorkLog.meals_served > 0)
+    
+    if company_id:
+        query = query.filter(models.WorkLog.catering_company_id == company_id)
+        
+    total = query.count()
+    pages = (total + size - 1) // size
+    items = query.offset((page - 1) * size).limit(size).all()
+    
+    return schemas.PaginatedResponse(items=items, total=total, page=page, size=size, pages=pages)
