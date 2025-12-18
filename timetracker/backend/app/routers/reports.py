@@ -40,7 +40,10 @@ def _generate_excel_from_worklogs(worklogs: list[models.WorkLog], title: str) ->
         team_name = log.team_member.team.name if log.team_member and log.team_member.team else (log.user.team.name if log.user.team else "")
         project_code = log.project.code if log.project else ""
         
-        ws.cell(row=row_idx, column=1, value=log.date)
+        date_val = log.date
+        if isinstance(date_val, datetime):
+            date_val = date_val.replace(tzinfo=None)
+        ws.cell(row=row_idx, column=1, value=date_val)
         ws.cell(row=row_idx, column=2, value=worker_name)
         ws.cell(row=row_idx, column=3, value=team_name)
         ws.cell(row=row_idx, column=4, value=project_code)
