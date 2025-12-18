@@ -447,4 +447,30 @@ onMounted(async () => {
   border: 1px solid #e2e8f0;
   border-radius: 4px;
 }
+
+@media (prefers-color-scheme: dark) {
+  .filters {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .tab-btn {
+    color: #94a3b8;
+  }
+  
+  .tab-btn:hover {
+    color: #fff;
+  }
+
+  .tab-btn.active {
+    color: #60a5fa;
+    border-bottom-color: #60a5fa;
+  }
+
+  .participant-list li {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(148, 163, 184, 0.2);
+    color: #f1f5f9;
+  }
+}
 </style>

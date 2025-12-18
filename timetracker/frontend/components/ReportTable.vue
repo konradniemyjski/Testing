@@ -9,8 +9,8 @@
           <th>Pracownik</th>
           <th>Zespół</th>
           <th>Godziny</th>
-          <th v-if="['catering', 'accommodation'].includes(type) || !type">Posiłki</th>
-          <th v-if="['catering', 'accommodation'].includes(type) || !type">Noclegi</th>
+          <th v-if="['catering', 'accommodation'].includes(type ?? '') || !type">Posiłki</th>
+          <th v-if="['catering', 'accommodation'].includes(type ?? '') || !type">Noclegi</th>
           <th v-if="type === 'catering'">Firma Cateringowa</th>
           <th v-if="type === 'accommodation'">Firma Noclegowa</th>
           <th>Uwagi</th>
@@ -24,8 +24,8 @@
           <td>{{ formatWorker(entry) }}</td>
           <td>{{ entry.team_member?.team?.name || '—' }}</td>
           <td>{{ entry.hours_worked }}</td>
-          <td v-if="['catering', 'accommodation'].includes(type) || !type">{{ entry.meals_served }}</td>
-          <td v-if="['catering', 'accommodation'].includes(type) || !type">{{ entry.overnight_stays }}</td>
+          <td v-if="['catering', 'accommodation'].includes(type ?? '') || !type">{{ entry.meals_served }}</td>
+          <td v-if="['catering', 'accommodation'].includes(type ?? '') || !type">{{ entry.overnight_stays }}</td>
           <td v-if="type === 'catering'">{{ entry.catering_company?.name || '—' }}</td>
           <td v-if="type === 'accommodation'">{{ entry.accommodation_company?.name || '—' }}</td>
           <td>{{ entry.notes || '—' }}</td>
@@ -121,5 +121,28 @@ function formatWorker(entry: any) {
 .pagination-info {
   font-weight: 500;
   margin: 0 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .table th {
+    background: rgba(30, 41, 59, 0.5);
+    color: #94a3b8;
+  }
+
+  .table td, .table th {
+    border-bottom-color: rgba(148, 163, 184, 0.2);
+    color: #f1f5f9;
+  }
+
+  .pagination-btn {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(148, 163, 184, 0.2);
+    color: #f1f5f9;
+  }
+  
+  .pagination-btn:disabled {
+    background: rgba(15, 23, 42, 0.3);
+    color: #475569;
+  }
 }
 </style>
