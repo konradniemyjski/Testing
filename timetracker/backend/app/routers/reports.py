@@ -1,38 +1,16 @@
 from datetime import datetime
 from io import BytesIO
 from typing import Annotated
-import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter
-from copy import copy
 
 from .. import auth, models, schemas
 from ..db import get_db
 
 router = APIRouter(prefix="/reports", tags=["reports"])
-
-def get_template_path():
-    # Try multiple locations
-    possible_paths = [
-        "backend/templates/lista.xlsx",
-        "templates/lista.xlsx",
-        "../lista.xlsx",
-        "/home/konrad/Dokumenty/Testing/timetracker/backend/templates/lista.xlsx"
-    ]
-    for path in possible_paths:
-        if os.path.exists(path):
-            return path
-    # Fallback to absolute check based on app root if possible
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) # should be app root
-    path = os.path.join(base_dir, "templates", "lista.xlsx")
-    if os.path.exists(path):
-        return path
-    raise FileNotFoundError("Could not find lista.xlsx template")
 
 @router.get("/monthly-excel")
 async def export_monthly_excel(
@@ -77,85 +55,90 @@ async def export_monthly_excel(
         # Sum hours if multiple logs per day?
         user_data[uid]["days"][day] = user_data[uid]["days"].get(day, 0) + log.hours_worked
 
-    # Load Template
-    try:
-        template_path = get_template_path()
-        wb = load_workbook(template_path)
-        ws = wb.active
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading template: {str(e)}")
+    # Create Workbook In-Memory
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, Border, Side
 
-    # Update Sheet Header (Month/Year) - Cell B1 based on inspection
-    # B1 was "MARZEC 2025" in example
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Lista"
+
+    # Set Header (Month/Year) - Cell B1
     polish_months = {
         1: "STYCZEŃ", 2: "LUTY", 3: "MARZEC", 4: "KWIECIEŃ", 5: "MAJ", 6: "CZERWIEC",
         7: "LIPIEC", 8: "SIERPIEŃ", 9: "WRZESIEŃ", 10: "PAŹDZIERNIK", 11: "LISTOPAD", 12: "GRUDZIEŃ"
     }
     month_name = polish_months.get(month, "").upper()
     ws["B1"] = f"{month_name} {year}"
+    ws["B1"].font = Font(bold=True, size=14)
 
-    # Row 2 is the template row with formulas. We will retain it for the first user, 
-    # and copy it for subsequent users.
-    # Start filling from Row 2.
-    
+    # Headers Row 1
+    ws.cell(row=1, column=1, value="Lp")
+    ws.cell(row=1, column=2, value="Nazwisko i Imię")
+    ws.cell(row=1, column=3, value="Stawka")
+    ws.cell(row=1, column=4, value="") # Buffer column
+    for day in range(1, 32):
+        ws.cell(row=1, column=4+day, value=day)
+    ws.cell(row=1, column=36, value="Razem") # AJ
+    ws.cell(row=1, column=37, value="Kwota") # AK
+
+    # Define Styles
+    medium_border = Border(
+        left=Side(style='thin'), 
+        right=Side(style='thin'), 
+        top=Side(style='thin'), 
+        bottom=Side(style='thin')
+    )
+    center_align = Alignment(horizontal='center', vertical='center')
+    left_align = Alignment(horizontal='left', vertical='center')
+
     start_row = 2
     users_sorted = sorted(user_data.values(), key=lambda x: x["user"].full_name or "")
     
-    # If no users, return empty?
-    if not users_sorted:
-         # Just return template
-         pass
-    else:
-        # We need to duplicate styles and formulas for row 2 to N
-        # OpenPyXL copying rows is manual.
-        # But wait, if there are multiple users, we populate row 2, then row 3, etc.
-        # Ideally we iterate.
+    # Fill Data
+    for idx, item in enumerate(users_sorted):
+        row = start_row + idx
+        user = item["user"]
+        days = item["days"]
         
-        for idx, item in enumerate(users_sorted):
-            row = start_row + idx
-            user = item["user"]
-            days = item["days"]
-            
-            # A: Index
-            ws.cell(row=row, column=1, value=idx + 1)
-            
-            # B: Name
-            ws.cell(row=row, column=2, value=user.full_name or user.email)
-            
-            # C: Rate
-            rate = user.hourly_rate if user.hourly_rate else 0.0
-            ws.cell(row=row, column=3, value=rate)
-            
-            # E (5) to AI (35): Days 1-31
-            for day_curr in range(1, 32):
-                col_idx = 4 + day_curr # E is 5. 5 = 4 + 1. Correct.
-                val = days.get(day_curr, None)
-                if val is not None:
-                     ws.cell(row=row, column=col_idx, value=val)
-            
-            # AJ: Hours Sum
-            # If we write raw value, we lose dynamic calculation if they edit it manually later.
-            # Ideally write formula.
-            # Template row 2 has =SUM(E2:AI2)
-            # We construct formula: =SUM(E{row}:AI{row})
-            ws.cell(row=row, column=36, value=f"=SUM(E{row}:AI{row})")
-            
-            # AK: Payment
-            # Template row 2 has =AJ2*C2
-            # Formula: =AJ{row}*C{row}
-            ws.cell(row=row, column=37, value=f"=AJ{row}*C{row}")
-            
-            # Styles: Copy styles from Row 2 if row > 2
-            if row > 2:
-                for col in range(1, 38):
-                    source_cell = ws.cell(row=2, column=col)
-                    target_cell = ws.cell(row=row, column=col)
-                    if source_cell.has_style:
-                        target_cell.font = copy(source_cell.font)
-                        target_cell.border = copy(source_cell.border)
-                        target_cell.fill = copy(source_cell.fill)
-                        target_cell.number_format = source_cell.number_format
-                        target_cell.alignment = copy(source_cell.alignment)
+        # A: Index
+        c = ws.cell(row=row, column=1, value=idx + 1)
+        c.border = medium_border
+        c.alignment = center_align
+        
+        # B: Name
+        c = ws.cell(row=row, column=2, value=user.full_name or user.email)
+        c.border = medium_border
+        c.alignment = left_align
+        
+        # C: Rate
+        rate = user.hourly_rate if user.hourly_rate else 0.0
+        c = ws.cell(row=row, column=3, value=rate)
+        c.border = medium_border
+        c.alignment = center_align
+
+        # D: Buffer (Empty)
+        c = ws.cell(row=row, column=4, value="")
+        c.border = medium_border
+        c.alignment = center_align
+        
+        # E (5) to AI (35): Days 1-31
+        for day_curr in range(1, 32):
+            col_idx = 4 + day_curr
+            val = days.get(day_curr, None)
+            c = ws.cell(row=row, column=col_idx, value=val)
+            c.border = medium_border
+            c.alignment = center_align
+        
+        # AJ: Hours Sum
+        c = ws.cell(row=row, column=36, value=f"=SUM(E{row}:AI{row})")
+        c.border = medium_border
+        c.alignment = center_align
+        
+        # AK: Payment
+        c = ws.cell(row=row, column=37, value=f"=AJ{row}*C{row}")
+        c.border = medium_border
+        c.alignment = center_align
 
     # Save to buffer
     stream = BytesIO()
