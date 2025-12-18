@@ -78,7 +78,7 @@ async def export_monthly_excel(
     # Query Data
     query = (
         db.query(models.WorkLog)
-        .options(joinedload(models.WorkLog.user))
+        .options(joinedload(models.WorkLog.user).joinedload(models.User.team))
         .filter(models.WorkLog.date >= start_date)
         .filter(models.WorkLog.date < end_date)
     )
@@ -181,7 +181,10 @@ async def export_monthly_excel(
     c.border = medium_border
 
     start_row = 2
-    users_sorted = sorted(user_data.values(), key=lambda x: x["user"].full_name or "")
+    users_sorted = sorted(user_data.values(), key=lambda x: (
+        (x["user"].team.name if x["user"].team else ""), 
+        (x["user"].full_name or "")
+    ))
     
     # Fill Data
     for idx, item in enumerate(users_sorted):
