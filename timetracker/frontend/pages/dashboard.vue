@@ -222,6 +222,18 @@
           <header style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;">
             <h2>Ostatnie wpisy</h2>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <!-- Export Controls -->
+              <div style="display: flex; gap: 0.25rem; align-items: center; border-right: 1px solid #ddd; padding-right: 0.5rem; margin-right: 0.5rem;">
+                <select v-model="exportMonth" style="padding: 0.25rem; border-radius: 4px; border: 1px solid #ccc;">
+                  <option v-for="m in 12" :key="m" :value="m">{{ m }}</option>
+                </select>
+                <input 
+                  type="number" 
+                  v-model="exportYear" 
+                  style="padding: 0.25rem; width: 70px; border-radius: 4px; border: 1px solid #ccc;"
+                >
+              </div>
+
               <select v-model="pageSize" @change="handlePageSizeChange" style="padding: 0.25rem; border-radius: 4px; border: 1px solid #ccc;">
                 <option :value="10">10 na stronę</option>
                 <option :value="25">25 na stronę</option>
@@ -231,9 +243,9 @@
                 class="primary-btn"
                 type="button"
                 @click="exportWorklogs"
-                :disabled="exporting || !worklogs.length"
+                :disabled="exporting"
               >
-                {{ exporting ? 'Przygotowywanie…' : 'Eksportuj do XLSX' }}
+                {{ exporting ? 'Pobieranie…' : 'Eksportuj XLSX' }}
               </button>
             </div>
           </header>
@@ -424,7 +436,6 @@ const filteredTeamMembers = computed(() => {
   if (selectedTeamId.value == null) {
     return teamMembers.value
   }
-  return teamMembers.value.filter((member) => member.team_id === selectedTeamId.value)
   return teamMembers.value.filter((member) => member.team_id === selectedTeamId.value)
 })
 
@@ -656,7 +667,9 @@ async function addManualMember() {
     hours_worked: 8,
     meals_served: 0,
     overnight_stays: 0,
-    absenceReason: 'Urlop'
+    absenceReason: 'Urlop',
+    absenceComment: '',
+    isManual: true
   })
 }
 
@@ -751,23 +764,36 @@ async function handleDelete(id: number) {
   await loadWorklogs()
 }
 
+// Export Controls
+const exportYear = ref(new Date().getFullYear())
+const exportMonth = ref(new Date().getMonth() + 1)
+
 async function exportWorklogs() {
-  if (!worklogs.value.length) return
   try {
     exporting.value = true
-    const blob = await api<Blob>('/worklogs/export', {
+    // Explicitly use the new reports endpoint
+    const blob = await api<Blob>('/reports/monthly-excel', {
+      params: {
+        year: exportYear.value,
+        month: exportMonth.value
+      },
       responseType: 'blob' as const
     })
+    
+    // Create filename based on selection
+    const filename = `raport_${exportYear.value}_${String(exportMonth.value).padStart(2, '0')}.xlsx`
+    
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `raport_godzin_${new Date().toISOString().slice(0, 10)}.xlsx`
+    link.download = filename
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
   } catch (error) {
-    window.alert('Nie udało się pobrać raportu. Spróbuj ponownie.')
+    console.error(error)
+    window.alert('Nie udało się pobrać raportu. Sprawdź czy dane istnieją.')
   } finally {
     exporting.value = false
   }

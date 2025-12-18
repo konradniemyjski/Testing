@@ -41,6 +41,9 @@ class User(Base, TimestampMixin):
     role: Mapped[str] = mapped_column(
         String(50), default="user", nullable=False
     )
+    hourly_rate: Mapped[float | None] = mapped_column(
+        Float, default=0.0, nullable=True
+    )
     team_id: Mapped[int | None] = mapped_column(
         ForeignKey("teams.id", ondelete="SET NULL"), nullable=True
     )
