@@ -13,6 +13,141 @@ from ..db import get_db
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
+from enum import Enum
+
+class ReportType(str, Enum):
+    PARTICIPANTS = "participants"
+    TEAM_WORK = "team_work"
+    ACCOMMODATION = "accommodation"
+    CATERING = "catering"
+
+def _generate_excel_from_worklogs(worklogs: list[models.WorkLog], title: str) -> BytesIO:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Border, Side, Alignment
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = title
+
+    # Headers
+    headers = ["Data", "Pracownik", "Zespół", "Budowa", "Godziny", "Posiłki", "Noclegi"]
+    for col_idx, header in enumerate(headers, 1):
+        ws.cell(row=1, column=col_idx, value=header).font = Font(bold=True)
+
+    # Data
+    for row_idx, log in enumerate(worklogs, 2):
+        worker_name = log.team_member.name if log.team_member else (log.user.full_name or log.user.email)
+        team_name = log.team_member.team.name if log.team_member and log.team_member.team else (log.user.team.name if log.user.team else "")
+        project_code = log.project.code if log.project else ""
+        
+        ws.cell(row=row_idx, column=1, value=log.date)
+        ws.cell(row=row_idx, column=2, value=worker_name)
+        ws.cell(row=row_idx, column=3, value=team_name)
+        ws.cell(row=row_idx, column=4, value=project_code)
+        ws.cell(row=row_idx, column=5, value=log.hours_worked)
+        ws.cell(row=row_idx, column=6, value=log.meals_served)
+        ws.cell(row=row_idx, column=7, value=log.overnight_stays)
+
+    # Auto-width
+    for column_cells in ws.columns:
+        length = max(len(str(cell.value) or "") for cell in column_cells)
+        ws.column_dimensions[column_cells[0].column_letter].width = length + 2
+
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+    return stream
+
+@router.get("/export")
+async def export_data(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
+    type: ReportType,
+    project_id: int | None = None,
+    team_id: int | None = None,
+    company_id: int | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+):
+    from openpyxl import Workbook
+    stream = None
+    filename = f"raport_{type.value}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+
+    if type == ReportType.PARTICIPANTS:
+        if not project_id:
+            raise HTTPException(status_code=400, detail="project_id is required for participants export")
+            
+        # Re-use logic for participants query
+        query = (
+            db.query(models.WorkLog)
+            .options(joinedload(models.WorkLog.team_member), joinedload(models.WorkLog.user))
+            .filter(models.WorkLog.project_id == project_id)
+        )
+        if current_user.role != "admin":
+            query = query.filter(models.WorkLog.user_id == current_user.id)
+            
+        worklogs = query.all()
+        names = set()
+        for log in worklogs:
+            if log.team_member and log.team_member.name:
+                names.add(log.team_member.name)
+            elif log.user.full_name:
+                names.add(log.user.full_name)
+            else:
+                names.add(log.user.email)
+        sorted_names = sorted(list(names))
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Uczestnicy"
+        ws.cell(row=1, column=1, value="Nazwisko i Imię")
+        for idx, name in enumerate(sorted_names, 2):
+            ws.cell(row=idx, column=1, value=name)
+            
+        stream = BytesIO()
+        wb.save(stream)
+        stream.seek(0)
+
+    elif type == ReportType.TEAM_WORK:
+        if not team_id:
+             raise HTTPException(status_code=400, detail="team_id is required for team_work export")
+        
+        base_query = _build_user_worklog_query(db, current_user, None, start_date, end_date)
+        query = (
+            base_query
+            .join(models.WorkLog.team_member, isouter=True)
+            .join(models.WorkLog.user, isouter=True)
+            .filter(
+                (models.TeamMember.team_id == team_id) | 
+                ((models.WorkLog.team_member_id == None) & (models.User.team_id == team_id))
+            )
+            .options(joinedload(models.WorkLog.project))
+        )
+        worklogs = query.all()
+        stream = _generate_excel_from_worklogs(worklogs, "Praca Zespołu")
+
+    elif type == ReportType.ACCOMMODATION:
+        query = _build_user_worklog_query(db, current_user, None, start_date, end_date)
+        query = query.filter(models.WorkLog.overnight_stays > 0).options(joinedload(models.WorkLog.project))
+        if company_id:
+            query = query.filter(models.WorkLog.accommodation_company_id == company_id)
+        worklogs = query.all()
+        stream = _generate_excel_from_worklogs(worklogs, "Noclegi")
+
+    elif type == ReportType.CATERING:
+        query = _build_user_worklog_query(db, current_user, None, start_date, end_date)
+        query = query.filter(models.WorkLog.meals_served > 0).options(joinedload(models.WorkLog.project))
+        if company_id:
+            query = query.filter(models.WorkLog.catering_company_id == company_id)
+        worklogs = query.all()
+        stream = _generate_excel_from_worklogs(worklogs, "Posiłki")
+
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
 def calculate_easter_date(year):
     """Calculate date of Catholic Easter Sunday."""
     a = year % 19

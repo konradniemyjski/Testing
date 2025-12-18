@@ -18,7 +18,7 @@ button {
 }
 
 .container {
-  max-width: 960px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
 }
@@ -176,4 +176,28 @@ button {
   .icon-button--delete {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.85), rgba(249, 115, 22, 0.85));
   }
+}
+
+.secondary-btn {
+  background: transparent;
+  border: 1px dashed #64748b;
+  color: #64748b;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  /* Match primary-btn */
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.secondary-btn:hover {
+  background: #f1f5f9;
+  border-color: #475569;
+  color: #475569;
+}
+
+.secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: solid;
 }

@@ -36,6 +36,9 @@
             <button class="primary-btn" @click="loadParticipants" :disabled="!filters.projectId || loading">
               Generuj
             </button>
+            <button class="secondary-btn" @click="downloadExport('participants')" :disabled="!filters.projectId || loading">
+              Eksportuj
+            </button>
           </div>
           
           <div v-if="participants.length" class="results">
@@ -69,6 +72,9 @@
             </div>
             <button class="primary-btn" @click="loadTeamWork" :disabled="!filters.teamId || loading">
               Szukaj
+            </button>
+            <button class="secondary-btn" @click="downloadExport('team_work')" :disabled="!filters.teamId || loading">
+              Eksportuj
             </button>
           </div>
           
@@ -106,6 +112,9 @@
             <button class="primary-btn" @click="loadAccommodation" :disabled="loading">
               Szukaj
             </button>
+            <button class="secondary-btn" @click="downloadExport('accommodation')" :disabled="loading">
+              Eksportuj
+            </button>
           </div>
           
           <ReportTable 
@@ -142,6 +151,9 @@
             </div>
             <button class="primary-btn" @click="loadCatering" :disabled="loading">
               Szukaj
+            </button>
+             <button class="secondary-btn" @click="downloadExport('catering')" :disabled="loading">
+              Eksportuj
             </button>
           </div>
           
@@ -297,6 +309,49 @@ function changePage(p: number) {
   if (currentTab.value === 'teamwork') loadTeamWork()
   else if (currentTab.value === 'accommodation') loadAccommodation()
   else if (currentTab.value === 'catering') loadCatering()
+}
+
+async function downloadExport(type: string) {
+  if (loading.value) return
+  loading.value = true
+  try {
+    const params: any = { type }
+    if (type === 'participants') {
+        if (!filters.projectId) return
+        params.project_id = filters.projectId
+    } else if (type === 'team_work') {
+        if (!filters.teamId) return
+        params.team_id = filters.teamId
+        params.start_date = filters.startDate
+        params.end_date = filters.endDate
+    } else if (type === 'accommodation') {
+        if (filters.companyId) params.company_id = filters.companyId
+        params.start_date = filters.startDate
+        params.end_date = filters.endDate
+    } else if (type === 'catering') {
+        if (filters.companyId) params.company_id = filters.companyId
+        params.start_date = filters.startDate
+        params.end_date = filters.endDate
+    }
+
+    const blob = await api<Blob>('/reports/export', {
+      params,
+      responseType: 'blob' 
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `raport_${type}_${new Date().toISOString().slice(0,10)}.xlsx`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('Export failed', e)
+    alert('Wystąpił błąd podczas eksportu.')
+  } finally {
+    loading.value = false
+  }
 }
 
 // Reset state when tab changes
