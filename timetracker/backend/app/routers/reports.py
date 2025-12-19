@@ -595,10 +595,103 @@ async def export_monthly_excel(
 
         current_row += 3
 
-    # Auto-fit columns
+    # Auto-fit columns for Main Sheet
     for column_cells in ws.columns:
         length = max(len(str(cell.value) or "") for cell in column_cells)
         ws.column_dimensions[get_column_letter(column_cells[0].column)].width = length + 2
+
+    # --- SUMMARY SHEET ("Podsumowanie") ---
+    ws_summary = wb.create_sheet("Podsumowanie")
+    
+    # helper for borders
+    def set_border(cell):
+        cell.border = medium_border
+        cell.alignment = center_align
+
+    # 1. Catering Summary
+    row_idx = 2
+    ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE POSIŁKÓW").font = Font(bold=True)
+    row_idx += 1
+    
+    ws_summary.cell(row=row_idx, column=2, value="Firma")
+    set_border(ws_summary.cell(row=row_idx, column=2))
+    ws_summary.cell(row=row_idx, column=3, value="Ilość")
+    set_border(ws_summary.cell(row=row_idx, column=3))
+    row_idx += 1
+    
+    total_meals = 0
+    for company, count in cat_global_summary.items():
+        ws_summary.cell(row=row_idx, column=2, value=company or "Brak firmy")
+        set_border(ws_summary.cell(row=row_idx, column=2))
+        
+        ws_summary.cell(row=row_idx, column=3, value=count)
+        set_border(ws_summary.cell(row=row_idx, column=3))
+        total_meals += count
+        row_idx += 1
+        
+    # Total row for catering
+    ws_summary.cell(row=row_idx, column=2, value="RAZEM").font = Font(bold=True)
+    set_border(ws_summary.cell(row=row_idx, column=2))
+    ws_summary.cell(row=row_idx, column=3, value=total_meals).font = Font(bold=True)
+    set_border(ws_summary.cell(row=row_idx, column=3))
+    
+    row_idx += 3 # Gap
+    
+    # 2. Accommodation Summary
+    ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE NOCLEGÓW").font = Font(bold=True)
+    row_idx += 1
+    
+    ws_summary.cell(row=row_idx, column=2, value="Firma")
+    set_border(ws_summary.cell(row=row_idx, column=2))
+    ws_summary.cell(row=row_idx, column=3, value="Ilość")
+    set_border(ws_summary.cell(row=row_idx, column=3))
+    row_idx += 1
+    
+    total_acc = 0
+    for company, count in acc_global_summary.items():
+        ws_summary.cell(row=row_idx, column=2, value=company or "Brak firmy")
+        set_border(ws_summary.cell(row=row_idx, column=2))
+        
+        ws_summary.cell(row=row_idx, column=3, value=count)
+        set_border(ws_summary.cell(row=row_idx, column=3))
+        total_acc += count
+        row_idx += 1
+
+    # Total row for accommodation
+    ws_summary.cell(row=row_idx, column=2, value="RAZEM").font = Font(bold=True)
+    set_border(ws_summary.cell(row=row_idx, column=2))
+    ws_summary.cell(row=row_idx, column=3, value=total_acc).font = Font(bold=True)
+    set_border(ws_summary.cell(row=row_idx, column=3))
+
+    row_idx += 3 # Gap
+
+    # 3. Project Summary
+    ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE PROJEKTÓW").font = Font(bold=True)
+    row_idx += 1
+    
+    headers = ["Projekt", "Posiłki", "Noclegi"]
+    for i, h in enumerate(headers):
+        c = ws_summary.cell(row=row_idx, column=2+i, value=h)
+        set_border(c)
+        c.font = Font(bold=True)
+    row_idx += 1
+    
+    for proj_name, data in proj_global_summary.items():
+        c = ws_summary.cell(row=row_idx, column=2, value=proj_name)
+        set_border(c)
+        
+        c = ws_summary.cell(row=row_idx, column=3, value=data["meals"])
+        set_border(c)
+        
+        c = ws_summary.cell(row=row_idx, column=4, value=data["acc"])
+        set_border(c)
+        
+        row_idx += 1
+
+    # Auto-fit columns for Summary Sheet
+    for column_cells in ws_summary.columns:
+        length = max(len(str(cell.value) or "") for cell in column_cells)
+        ws_summary.column_dimensions[get_column_letter(column_cells[0].column)].width = length + 2
 
     # Save to buffer
     stream = BytesIO()
