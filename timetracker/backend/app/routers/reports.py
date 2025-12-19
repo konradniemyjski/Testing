@@ -259,6 +259,7 @@ async def export_monthly_excel(
                 "rate": rate,
                 "days": {},         # day_int: hours (accumulated) or absence_note
                 "project_stats": {}, # project_code -> {name, hours, meals, acc}
+                "projects": {}, # day_int: "Code"
                 "meals_count": {},  # day_int: count
                 "acc_count": {},    # day_int: count
             }
@@ -269,6 +270,7 @@ async def export_monthly_excel(
         if log.project:
             proj_str = f"{log.project.code} {log.project.name}"
             daily_headers[day]["projs"].add(proj_str)
+            user_data[key]["projects"][day] = f"{log.project.code} {log.project.name}"
         if log.accommodation_company:
             daily_headers[day]["accs"].add(log.accommodation_company.name)
         if log.catering_company:
