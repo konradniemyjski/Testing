@@ -229,6 +229,11 @@ async def export_monthly_excel(
     # Organize data
     user_data = {}
     
+    # Global Aggregators for Summary Sheet
+    acc_global_summary = {} # Name -> count
+    cat_global_summary = {} # Name -> count
+    proj_global_summary = {} # Project Name -> {"meals": 0, "acc": 0}
+    
     for log in worklogs:
         if log.team_member_id:
             key = f"tm_{log.team_member_id}"
@@ -262,6 +267,12 @@ async def export_monthly_excel(
             if isinstance(current_val, (int, float)):
                 user_data[key]["days"][day] = current_val + log.hours_worked
         
+        if log.project:
+            proj_name = f"{log.project.code} {log.project.name}"
+            # Init project summary if new
+            if proj_name not in proj_global_summary:
+                proj_global_summary[proj_name] = {"meals": 0, "acc": 0}
+
         # Project Info
         if log.project:
             proj_str = f"{log.project.code} {log.project.name}"
@@ -273,12 +284,22 @@ async def export_monthly_excel(
             user_data[key]["meals_count"][day] = user_data[key]["meals_count"].get(day, 0) + log.meals_served
             name = log.catering_company.name if log.catering_company else "Tak"
             user_data[key]["meals_info"][day] = name
+            
+            # Global Aggregation
+            cat_global_summary[name] = cat_global_summary.get(name, 0) + log.meals_served
+            if log.project:
+                proj_global_summary[proj_name]["meals"] += log.meals_served
 
         # Accommodation
         if log.overnight_stays > 0:
             user_data[key]["acc_count"][day] = user_data[key]["acc_count"].get(day, 0) + log.overnight_stays
             name = log.accommodation_company.name if log.accommodation_company else "Tak"
             user_data[key]["acc_info"][day] = name
+            
+            # Global Aggregation
+            acc_global_summary[name] = acc_global_summary.get(name, 0) + log.overnight_stays
+            if log.project:
+                proj_global_summary[proj_name]["acc"] += log.overnight_stays
 
     # Create Workbook In-Memory
     from openpyxl import Workbook
