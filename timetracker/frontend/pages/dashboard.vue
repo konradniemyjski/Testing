@@ -430,6 +430,7 @@ const roleLabel = computed(() => {
 })
 
 const isUser = computed(() => userStore.profile?.role === 'user')
+const canManageUsers = computed(() => userStore.profile?.role === 'admin')
 
 const { teams, teamMembers, accommodationCompanies, cateringCompanies } = storeToRefs(dictionaryStore)
 

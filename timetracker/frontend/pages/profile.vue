@@ -163,7 +163,7 @@ async function updateDetails() {
     })
     
     // Update store
-    userStore.setProfile(updatedUser)
+    userStore.updateProfile(updatedUser)
     detailsSuccess.value = 'Dane zostały zaktualizowane.'
   } catch (error: any) {
     detailsError.value = error.data?.detail || 'Nie udało się zaktualizować danych.'
