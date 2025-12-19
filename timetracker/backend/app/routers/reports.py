@@ -252,7 +252,8 @@ async def export_monthly_excel(
                 "team": team_obj,
                 "rate": rate,
                 "days": {},         # day_int: hours (accumulated) or absence_note
-                "projects": {},     # day_int: "Code Name"
+                "projects": {},     # day_int: "Code Code Name"
+                "project_stats": {}, # project_code -> {name, hours, meals, acc}
                 "meals_count": {},  # day_int: count
                 "meals_info": {},   # day_int: "Company Name"
                 "acc_count": {},    # day_int: count
@@ -268,12 +269,31 @@ async def export_monthly_excel(
                 user_data[key]["days"][day] = current_val + log.hours_worked
         
         if log.project:
-            proj_name = f"{log.project.code} {log.project.name}"
-            # Init project summary if new
-            if proj_name not in proj_global_summary:
-                proj_global_summary[proj_name] = {"meals": 0, "acc": 0}
+            proj_code = log.project.code
+            proj_name_str = log.project.name
+            full_proj_name = f"{proj_code} {proj_name_str}"
+            
+            # Init global project summary if new
+            if full_proj_name not in proj_global_summary:
+                proj_global_summary[full_proj_name] = {"meals": 0, "acc": 0}
 
-        # Project Info
+            # Init user project stats if new
+            if proj_code not in user_data[key]["project_stats"]:
+                user_data[key]["project_stats"][proj_code] = {
+                    "name": proj_name_str,
+                    "hours": 0,
+                    "meals": 0,
+                    "acc": 0
+                }
+            
+            # Accumulate User Project Stats
+            user_data[key]["project_stats"][proj_code]["hours"] += log.hours_worked
+            if log.meals_served > 0:
+                 user_data[key]["project_stats"][proj_code]["meals"] += log.meals_served
+            if log.overnight_stays > 0:
+                 user_data[key]["project_stats"][proj_code]["acc"] += log.overnight_stays
+
+        # Project Info for Daily View
         if log.project:
             proj_str = f"{log.project.code} {log.project.name}"
             # Keep existing if multiple, or overwrite? Overwrite for now as per layout.
@@ -288,7 +308,9 @@ async def export_monthly_excel(
             # Global Aggregation
             cat_global_summary[name] = cat_global_summary.get(name, 0) + log.meals_served
             if log.project:
-                proj_global_summary[proj_name]["meals"] += log.meals_served
+                full_proj_name = f"{log.project.code} {log.project.name}"
+                if full_proj_name in proj_global_summary:
+                    proj_global_summary[full_proj_name]["meals"] += log.meals_served
 
         # Accommodation
         if log.overnight_stays > 0:
@@ -299,7 +321,9 @@ async def export_monthly_excel(
             # Global Aggregation
             acc_global_summary[name] = acc_global_summary.get(name, 0) + log.overnight_stays
             if log.project:
-                proj_global_summary[proj_name]["acc"] += log.overnight_stays
+                full_proj_name = f"{log.project.code} {log.project.name}"
+                if full_proj_name in proj_global_summary:
+                    proj_global_summary[full_proj_name]["acc"] += log.overnight_stays
 
     # Create Workbook In-Memory
     from openpyxl import Workbook
@@ -687,6 +711,81 @@ async def export_monthly_excel(
         set_border(c)
         
         row_idx += 1
+
+    row_idx += 3 # Gap
+
+    # 4. Detailed User Summary
+    ws_summary.cell(row=row_idx, column=2, value="SZCZEGÓŁOWE PODSUMOWANIE PRACOWNIKÓW").font = Font(bold=True, size=12)
+    row_idx += 2
+
+    # Check calculated user totals against data
+    for item in users_sorted:
+        total_hours = sum(p["hours"] for p in item["project_stats"].values())
+        total_meals = sum(p["meals"] for p in item["project_stats"].values())
+        total_acc = sum(p["acc"] for p in item["project_stats"].values())
+        
+        # Skip if no relevant data to show? (Optional, but cleaner)
+        if total_hours == 0 and total_meals == 0 and total_acc == 0:
+             continue
+             
+        # User Header
+        ws_summary.cell(row=row_idx, column=2, value=f"Pracownik: {item['name']}").font = Font(bold=True)
+        row_idx += 1
+        
+        # General Summary Table
+        ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE OGÓLNE").font = Font(bold=True)
+        row_idx += 1
+        
+        headers_gen = ["Suma godzin", "Suma posiłków", "Suma noclegów"]
+        vals_gen = [total_hours, total_meals, total_acc]
+        
+        for i, h in enumerate(headers_gen):
+             c = ws_summary.cell(row=row_idx, column=2+i, value=h)
+             set_border(c)
+        row_idx += 1
+        for i, v in enumerate(vals_gen):
+             c = ws_summary.cell(row=row_idx, column=2+i, value=v)
+             set_border(c)
+        row_idx += 2
+        
+        # Project Summary Table
+        ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE WG BUDOWY").font = Font(bold=True)
+        row_idx += 1
+        
+        headers_proj = ["Kod", "Nazwa", "Godziny", "% Całości", "Posiłki", "Noclegi"]
+        for i, h in enumerate(headers_proj):
+            c = ws_summary.cell(row=row_idx, column=2+i, value=h)
+            set_border(c)
+        row_idx += 1
+        
+        # Sort projects by code
+        sorted_projects = sorted(item["project_stats"].items())
+        
+        for p_code, stats in sorted_projects:
+            # Code
+            c = ws_summary.cell(row=row_idx, column=2, value=p_code)
+            set_border(c)
+            # Name
+            c = ws_summary.cell(row=row_idx, column=3, value=stats["name"])
+            set_border(c)
+            # Hours
+            c = ws_summary.cell(row=row_idx, column=4, value=stats["hours"])
+            set_border(c)
+            # %
+            pct = (stats["hours"] / total_hours) if total_hours > 0 else 0
+            c = ws_summary.cell(row=row_idx, column=5, value=pct)
+            c.number_format = '0.00%'
+            set_border(c)
+            # Meals
+            c = ws_summary.cell(row=row_idx, column=6, value=stats["meals"])
+            set_border(c)
+            # Acc
+            c = ws_summary.cell(row=row_idx, column=7, value=stats["acc"])
+            set_border(c)
+            
+            row_idx += 1
+            
+        row_idx += 2 # Gap between users
 
     # Auto-fit columns for Summary Sheet
     for column_cells in ws_summary.columns:
