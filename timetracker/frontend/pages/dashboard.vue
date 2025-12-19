@@ -690,18 +690,30 @@ function removeEntry(index: number) {
 }
 
 async function handleCreate() {
-  if (!form.project_id) return
+  const errors: string[] = []
+  if (!form.project_id) errors.push('Wybierz budowę')
+  if (!form.date) errors.push('Wybierz datę')
+  
+  const trimmedSiteCode = form.site_code.trim()
+  const projectCode = findProject(form.project_id)?.code || ''
+  const finalSiteCode = trimmedSiteCode || projectCode || ''
+  
+  if (!finalSiteCode) errors.push('Brak kodu budowy (wybierz budowę lub wpisz kod)')
+
+  // Check valid entries
+  const validEntries = entries.value.filter(e => isUser.value || e.team_member_id != null)
+  if (validEntries.length === 0) errors.push('Lista pracowników jest pusta lub nie wybrano pracowników.')
+
+  if (errors.length > 0) {
+    window.alert('Nie można zapisać:\n- ' + errors.join('\n- '))
+    return
+  }
   
   try {
     saving.value = true
-    const trimmedSiteCode = form.site_code.trim()
-    const projectCode = findProject(form.project_id)?.code || ''
-    const finalSiteCode = trimmedSiteCode || projectCode || ''
     
     // Construct batch payload
-    const batchPayload = entries.value
-      .filter(e => isUser.value || e.team_member_id != null) // Allow null team_member_id if isUser
-      .map(entry => {
+    const batchPayload = validEntries.map(entry => {
         let notes = form.notes.trim()
         let hours = entry.hours_worked
         let absences = 0
@@ -730,11 +742,6 @@ async function handleCreate() {
         }
       })
     
-    if (batchPayload.length === 0) {
-      window.alert('Brak pracowników do zapisania.')
-      return
-    }
-
     await api<WorkLog[]>('/worklogs/batch', {
       method: 'POST',
       body: batchPayload
@@ -756,20 +763,26 @@ async function handleCreate() {
         isManual: false
       }]
     } else if (selectedTeamId.value) {
-      // Refresh logic for admin/team view if needed, but for now leave as is or basic reset
        entries.value.forEach(e => {
          e.hours_worked = 8
          e.meals_served = 0
          e.overnight_stays = 0
          e.isPresent = true
-         e.notes = '' // Custom field not in BatchEntry type but pushed to payload
+         e.absenceComment = '' 
        })
     }
 
     window.alert('Zapisano wpisy! Lista została odświeżona.')
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
-    window.alert('Wystąpił błąd podczas zapisywania.')
+    let msg = 'Wystąpił błąd podczas zapisywania.'
+    if (e.data && e.data.detail) {
+       msg += `\nTreść błędu: ${JSON.stringify(e.data.detail)}`
+    } else if (e.response && e.response._data) {
+       // Nuxt fetch specific
+       msg += `\nTreść błędu: ${JSON.stringify(e.response._data)}`
+    }
+    window.alert(msg)
   } finally {
     saving.value = false
   }
