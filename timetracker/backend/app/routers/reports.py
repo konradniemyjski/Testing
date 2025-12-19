@@ -229,7 +229,7 @@ async def export_monthly_excel(
     worklogs = query.all()
     
     # Organize data by Worker (TeamMember or User fallback)
-    # Map worker_key -> { name, team, rate, days: { day: hours } }
+    # Map worker_key -> { name, team, rate, days: { day: hours }, meals: { day: count }, accommodation: { day: count } }
     user_data = {}
     
     for log in worklogs:
@@ -250,15 +250,20 @@ async def export_monthly_excel(
                 "name": worker_name,
                 "team": team_obj,
                 "rate": rate,
-                "days": {}
+                "days": {},
+                "meals": {},
+                "accommodation": {}
             }
         
         day = log.date.day
         user_data[key]["days"][day] = user_data[key]["days"].get(day, 0) + log.hours_worked
+        user_data[key]["meals"][day] = user_data[key]["meals"].get(day, 0) + log.meals_served
+        user_data[key]["accommodation"][day] = user_data[key]["accommodation"].get(day, 0) + log.overnight_stays
 
     # Create Workbook In-Memory
     from openpyxl import Workbook
     from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+    from openpyxl.utils import get_column_letter
 
     wb = Workbook()
     ws = wb.active
@@ -274,21 +279,16 @@ async def export_monthly_excel(
     ws["B1"].font = Font(bold=True, size=14)
 
     # Styles
-    medium_border = Border(
-        left=Side(style='thin'), 
-        right=Side(style='thin'), 
-        top=Side(style='thin'), 
-        bottom=Side(style='thin')
-    )
+    thin_side = Side(style='thin')
+    medium_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    
     center_align = Alignment(horizontal='center', vertical='center')
     left_align = Alignment(horizontal='left', vertical='center')
+    right_align = Alignment(horizontal='right', vertical='center')
 
     # Fills
-    # Red for Sundays/Holidays: FFFF0000
-    # Yellow for Saturdays: FFFFFF00
     fill_red = PatternFill(start_color="FFFF0000", end_color="FFFF0000", fill_type="solid")
     fill_yellow = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
-    fill_green = PatternFill(start_color="FF00B050", end_color="FF00B050", fill_type="solid") # Example green if needed later
     
     # Calculate Holidays and Weekends for this month
     holidays = get_polish_holidays(year)
@@ -305,22 +305,19 @@ async def export_monthly_excel(
             else:
                 day_styles[day] = None
         except ValueError:
-             # Day out of range for month (e.g. Feb 30) - irrelevant as unused
              day_styles[day] = None
 
     # Headers Row 1
-    c = ws.cell(row=1, column=1, value="Lp")
-    c.border = medium_border
-    
-    c = ws.cell(row=1, column=2, value="Nazwisko i Imię")
-    c.border = medium_border
-    
-    c = ws.cell(row=1, column=3, value="Stawka")
-    c.border = medium_border
-    
-    c = ws.cell(row=1, column=4, value="") # Buffer
-    c.border = medium_border
+    headers = ["Lp", "Nazwisko i Imię", "Stawka", ""]
+    for i, h in enumerate(headers, 1):
+        c = ws.cell(row=1, column=i, value=h)
+        c.border = medium_border
+        if i == 2:
+            c.alignment = left_align
+        else:
+            c.alignment = center_align
 
+    # Day headers
     for day in range(1, 32):
         col_idx = 4 + day
         c = ws.cell(row=1, column=col_idx, value=day)
@@ -329,13 +326,13 @@ async def export_monthly_excel(
         if day_styles.get(day):
             c.fill = day_styles[day]
 
+    # Summary headers
     c = ws.cell(row=1, column=36, value="Razem")
     c.border = medium_border
-    
     c = ws.cell(row=1, column=37, value="Kwota")
     c.border = medium_border
 
-    start_row = 2
+    current_row = 2
     users_sorted = sorted(user_data.values(), key=lambda x: (
         (x["team"].name if x["team"] else ""), 
         (x["name"] or "")
@@ -343,50 +340,90 @@ async def export_monthly_excel(
     
     # Fill Data
     for idx, item in enumerate(users_sorted):
-        row = start_row + idx
-        
+        # 1. Main Row: HOURS
         # A: LP
-        c = ws.cell(row=row, column=1, value=idx + 1)
+        c = ws.cell(row=current_row, column=1, value=idx + 1)
         c.border = medium_border
         c.alignment = center_align
         
         # B: Name
-        c = ws.cell(row=row, column=2, value=item["name"])
+        c = ws.cell(row=current_row, column=2, value=item["name"])
         c.border = medium_border
+        c.font = Font(bold=True)
         c.alignment = left_align
         
         # C: Rate
-        # For now assuming 0 if not set, or taking from User. TeamMember model has no rate.
-        c = ws.cell(row=row, column=3, value=item["rate"])
+        c = ws.cell(row=current_row, column=3, value=item["rate"])
         c.border = medium_border
         c.alignment = center_align
 
-        # D: Unknown/Extra
-        c = ws.cell(row=row, column=4)
+        # D: Buffer
+        c = ws.cell(row=current_row, column=4)
         c.border = medium_border
-        c.alignment = center_align
-        
-        # E (5) to AI (35): Days 1-31
-        # E (5) to AI (35): Days 1-31
-        for day_curr in range(1, 32):
-            col_idx = 4 + day_curr
-            val = item["days"].get(day_curr, None)
-            c = ws.cell(row=row, column=col_idx, value=val)
+
+        # Days (Hours)
+        for day in range(1, 32):
+            col_idx = 4 + day
+            val = item["days"].get(day, None)
+            c = ws.cell(row=current_row, column=col_idx, value=val)
             c.border = medium_border
             c.alignment = center_align
-            # Apply color style if day is holiday/weekend
-            if day_styles.get(day_curr):
-                c.fill = day_styles[day_curr]
+            if day_styles.get(day):
+                c.fill = day_styles[day]
         
-        # AJ: Hours Sum
-        c = ws.cell(row=row, column=36, value=f"=SUM(E{row}:AI{row})")
+        # AJ: Sum Hours
+        c = ws.cell(row=current_row, column=36, value=f"=SUM(E{current_row}:AI{current_row})")
         c.border = medium_border
-        c.alignment = center_align
+        c.font = Font(bold=True)
         
         # AK: Payment
-        c = ws.cell(row=row, column=37, value=f"=AJ{row}*C{row}")
+        c = ws.cell(row=current_row, column=37, value=f"=AJ{current_row}*C{current_row}")
         c.border = medium_border
+        c.font = Font(bold=True)
+
+        current_row += 1
+
+        # 2. Sub-row: MEALS (Posiłki)
+        # B: Label
+        c = ws.cell(row=current_row, column=2, value="   Posiłki") # Indented
+        c.alignment = left_align
+        
+        # Days (Meals)
+        for day in range(1, 32):
+            col_idx = 4 + day
+            val = item["meals"].get(day, None)
+            c = ws.cell(row=current_row, column=col_idx, value=val)
+            c.border = Border(bottom=thin_side) # lighter border?
+            c.alignment = center_align
+            c.font = Font(size=9, color="555555")
+
+        # AJ: Sum Meals
+        c = ws.cell(row=current_row, column=36, value=f"=SUM(E{current_row}:AI{current_row})")
         c.alignment = center_align
+        c.font = Font(size=9)
+        
+        current_row += 1
+
+        # 3. Sub-row: ACCOMMODATION (Noclegi)
+        # B: Label
+        c = ws.cell(row=current_row, column=2, value="   Noclegi") # Indented
+        c.alignment = left_align
+
+        # Days (Accommodation)
+        for day in range(1, 32):
+            col_idx = 4 + day
+            val = item["accommodation"].get(day, None)
+            c = ws.cell(row=current_row, column=col_idx, value=val)
+            c.border = Border(bottom=medium_border.bottom) # Close the block
+            c.alignment = center_align
+            c.font = Font(size=9, color="555555")
+
+        # AJ: Sum Accommodation
+        c = ws.cell(row=current_row, column=36, value=f"=SUM(E{current_row}:AI{current_row})")
+        c.alignment = center_align
+        c.font = Font(size=9)
+        
+        current_row += 1
 
     # Save to buffer
     stream = BytesIO()
