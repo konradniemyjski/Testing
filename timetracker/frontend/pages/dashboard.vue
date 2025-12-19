@@ -37,9 +37,6 @@
                 id="siteCode" 
                 v-model="form.site_code" 
                 type="text" 
-                readonly 
-                class="readonly-input"
-                tabindex="-1"
               />
             </div>
 
@@ -673,6 +670,10 @@ async function addManualMember() {
   })
 }
 
+function removeEntry(index: number) {
+  entries.value.splice(index, 1)
+}
+
 async function handleCreate() {
   if (!form.project_id) return
   
@@ -973,12 +974,6 @@ onMounted(async () => {
   width: 100%;
 }
 
-.readonly-input {
-  background-color: #f1f5f9;
-  color: #64748b;
-  cursor: not-allowed;
-  background-color: #fff;
-}
 
 .absence-comment-input {
   padding: 0.5rem;
@@ -988,18 +983,13 @@ onMounted(async () => {
 }
 
 @media (prefers-color-scheme: dark) {
-  .readonly-input {
-    background-color: rgba(15, 23, 42, 0.6);
-    color: #94a3b8;
-    border-color: rgba(148, 163, 184, 0.2);
-  }
-
   /* Fix for absent card in dark mode */
   .member-card.absent {
     background: rgba(127, 29, 29, 0.15); /* Subtle dark red/faded background */
     border-color: rgba(220, 38, 38, 0.2);
   }
 }
+
 
 .delete-entry-btn {
   background: none;
