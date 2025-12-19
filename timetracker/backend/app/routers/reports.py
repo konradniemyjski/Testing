@@ -635,7 +635,7 @@ async def export_monthly_excel(
         cell.alignment = center_align
 
     # 1. Catering Summary
-    row_idx = 2
+    # row_idx continues incrementing...
     ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE POSIŁKÓW").font = Font(bold=True)
     row_idx += 1
     
@@ -695,7 +695,7 @@ async def export_monthly_excel(
     ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE PROJEKTÓW").font = Font(bold=True)
     row_idx += 1
     
-    headers = ["Projekt", "Posiłki", "% Posiłków", "Noclegi", "% Noclegów", "Godziny", "% Godzin"]
+    headers = ["Projekt", "Godziny", "% Godzin", "Posiłki", "% Posiłków", "Noclegi", "% Noclegów"]
     for i, h in enumerate(headers):
         c = ws_summary.cell(row=row_idx, column=2+i, value=h)
         set_border(c)
@@ -710,36 +710,36 @@ async def export_monthly_excel(
         c = ws_summary.cell(row=row_idx, column=2, value=proj_name)
         set_border(c)
         
+        # Hours
+        hours_sum = data["hours"]
+        c = ws_summary.cell(row=row_idx, column=3, value=hours_sum)
+        set_border(c)
+
+        # Hours %
+        pct_hours = (hours_sum / total_hours_global) if total_hours_global > 0 else 0
+        c = ws_summary.cell(row=row_idx, column=4, value=pct_hours)
+        c.number_format = '0.00%'
+        set_border(c)
+
         # Meals
         meals_count = data["meals"]
-        c = ws_summary.cell(row=row_idx, column=3, value=meals_count)
+        c = ws_summary.cell(row=row_idx, column=5, value=meals_count)
         set_border(c)
         
         # Meals %
         pct_meals = (meals_count / total_meals) if total_meals > 0 else 0
-        c = ws_summary.cell(row=row_idx, column=4, value=pct_meals)
+        c = ws_summary.cell(row=row_idx, column=6, value=pct_meals)
         c.number_format = '0.00%'
         set_border(c)
         
         # Acc
         acc_count = data["acc"]
-        c = ws_summary.cell(row=row_idx, column=5, value=acc_count)
+        c = ws_summary.cell(row=row_idx, column=7, value=acc_count)
         set_border(c)
         
         # Acc %
         pct_acc = (acc_count / total_acc) if total_acc > 0 else 0
-        c = ws_summary.cell(row=row_idx, column=6, value=pct_acc)
-        c.number_format = '0.00%'
-        set_border(c)
-
-        # Hours
-        hours_sum = data["hours"]
-        c = ws_summary.cell(row=row_idx, column=7, value=hours_sum)
-        set_border(c)
-
-        # Hours %
-        pct_hours = (hours_sum / total_hours_global) if total_hours_global > 0 else 0
-        c = ws_summary.cell(row=row_idx, column=8, value=pct_hours)
+        c = ws_summary.cell(row=row_idx, column=8, value=pct_acc)
         c.number_format = '0.00%'
         set_border(c)
         
