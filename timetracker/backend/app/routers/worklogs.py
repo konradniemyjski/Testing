@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
+from sqlalchemy import func
 
 from openpyxl import Workbook
 
@@ -40,6 +41,40 @@ def _build_user_worklog_query(
     if end_date is not None:
         query = query.filter(models.WorkLog.date <= end_date)
     return query
+
+
+def _validate_daily_hours(
+    db: Session, 
+    user_id: int, 
+    date: datetime, 
+    new_hours: float, 
+    exclude_worklog_id: int | None = None,
+    extra_hours: float = 0.0
+):
+    """
+    Check if adding new_hours (plus extra_hours from current batch) exceeds 24h for a specific day.
+    """
+    check_date = date.date() if isinstance(date, datetime) else date
+    
+    start_of_day = datetime.combine(check_date, datetime.min.time())
+    end_of_day = datetime.combine(check_date, datetime.max.time())
+
+    query = db.query(func.sum(models.WorkLog.hours_worked)).filter(
+        models.WorkLog.user_id == user_id,
+        models.WorkLog.date >= start_of_day,
+        models.WorkLog.date <= end_of_day
+    )
+    
+    if exclude_worklog_id:
+        query = query.filter(models.WorkLog.id != exclude_worklog_id)
+        
+    current_db_sum = query.scalar() or 0.0
+    
+    if current_db_sum + new_hours + extra_hours > 24:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Przekroczono limit 24 godzin pracy w dniu {check_date}."
+        )
 
 
 @router.get("/", response_model=schemas.PaginatedResponse[schemas.WorkLogRead])
@@ -109,8 +144,24 @@ async def create_worklogs_batch(
     Create multiple worklogs at once.
     """
     created_worklogs = []
+    batch_tracker = {} # (user_id, date) -> accumulated_hours
     
     for item in worklogs_in:
+        # Validate 24h limit
+        # Track hours within this batch for the same day
+        check_date = item.date.date()
+        tracker_key = (current_user.id, check_date)
+        already_in_batch = batch_tracker.get(tracker_key, 0.0)
+        
+        _validate_daily_hours(
+            db, 
+            current_user.id, 
+            item.date, 
+            item.hours_worked, 
+            extra_hours=already_in_batch
+        )
+        batch_tracker[tracker_key] = already_in_batch + item.hours_worked
+
         project = db.get(models.Project, item.project_id)
         if not project:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Project {item.project_id} does not exist")
@@ -159,6 +210,9 @@ async def create_worklog(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(auth.get_current_active_user)],
 ):
+    # Validate 24h limit
+    _validate_daily_hours(db, current_user.id, worklog_in.date, worklog_in.hours_worked)
+
     project = db.get(models.Project, worklog_in.project_id)
     if not project:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project does not exist")
@@ -203,6 +257,19 @@ async def update_worklog(
     if not worklog or worklog.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Work log not found")
     update_data = worklog_in.model_dump(exclude_unset=True)
+
+    if "hours_worked" in update_data or "date" in update_data:
+        # Re-validate if hours or date changed
+        check_date = update_data.get("date", worklog.date)
+        check_hours = update_data.get("hours_worked", worklog.hours_worked)
+        _validate_daily_hours(
+            db, 
+            current_user.id, 
+            check_date, 
+            check_hours, 
+            exclude_worklog_id=worklog.id
+        )
+
     if "project_id" in update_data:
         project = db.get(models.Project, update_data["project_id"])
         if not project:

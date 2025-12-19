@@ -322,76 +322,72 @@ async def export_monthly_excel(
     c.alignment = left_align
 
     ws.merge_cells(start_row=1, start_column=3, end_row=2, end_column=3)
-    c = ws.cell(row=1, column=3, value="Stawka")
+    ws.merge_cells(start_row=1, start_column=3, end_row=2, end_column=3)
+    c = ws.cell(row=1, column=3, value="Liczba dni")
     c.border = medium_border
     c.alignment = center_align
 
     ws.merge_cells(start_row=1, start_column=4, end_row=2, end_column=4)
-    c = ws.cell(row=1, column=4, value="")
+    c = ws.cell(row=1, column=4, value="Stawka")
     c.border = medium_border
 
     # Days Headers
     for day in range(1, 32):
-        start_col = 5 + (day - 1) * 3
-        # Merge 3 cells for the day number
-        ws.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=start_col + 2)
-        c = ws.cell(row=1, column=start_col, value=day)
+        col_idx = 4 + day # 1=E(5), 31=AI(35)
+        c = ws.cell(row=1, column=col_idx, value=day)
         c.border = medium_border
         c.alignment = center_align
         
         # Apply style to the day header
         if day_styles.get(day):
-            # Apply to all 3 cells in merge range (though openpyxl usually styles top-left)
-            for i in range(3):
-                cell = ws.cell(row=1, column=start_col + i)
-                cell.fill = day_styles[day]
-                cell.border = medium_border
+            c.fill = day_styles[day]
+        
+        # Merge row 1 and 2 for day headers since we don't have sub-headers anymore
+        ws.merge_cells(start_row=1, start_column=col_idx, end_row=2, end_column=col_idx)
+        
+        # Set narrow width
+        ws.column_dimensions[get_column_letter(col_idx)].width = 4
 
-        # Sub-headers in Row 2: G (Godz), P (Posiłki), N (Noclegi)
-        sub_headers = ["G", "P", "N"]
-        for i, header in enumerate(sub_headers):
-            c = ws.cell(row=2, column=start_col + i, value=header)
-            c.border = medium_border
-            c.alignment = center_align
-            # Apply color to sub-header as well
-            if day_styles.get(day):
-                c.fill = day_styles[day]
-            
-            # Set narrow width for these columns
-            col_letter = get_column_letter(start_col + i)
-            # ws.column_dimensions[col_letter].width = 4
-
-    # Summary Headers (Right after day 31)
-    summary_start_col = 5 + (31 * 3)
+    # Summary Headers
+    # AJ (36): ILOŚĆ GODZIN
+    # AK (37): NALEŻNOŚĆ
     
-    # Razem Godziny
-    c = ws.cell(row=1, column=summary_start_col, value="Godziny")
+    # ILOŚĆ GODZIN
+    c = ws.cell(row=1, column=36, value="ILOŚĆ GODZIN")
     c.border = medium_border
-    ws.merge_cells(start_row=1, start_column=summary_start_col, end_row=2, end_column=summary_start_col)
+    c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    ws.column_dimensions["AJ"].width = 10
+    ws.merge_cells(start_row=1, start_column=36, end_row=2, end_column=36)
     
-    # Razem Posiłki
-    c = ws.cell(row=1, column=summary_start_col + 1, value="Posiłki")
+    # NALEŻNOŚĆ
+    c = ws.cell(row=1, column=37, value="NALEŻNOŚĆ")
     c.border = medium_border
-    ws.merge_cells(start_row=1, start_column=summary_start_col + 1, end_row=2, end_column=summary_start_col + 1)
-
-    # Razem Noclegi
-    c = ws.cell(row=1, column=summary_start_col + 2, value="Noclegi")
-    c.border = medium_border
-    ws.merge_cells(start_row=1, start_column=summary_start_col + 2, end_row=2, end_column=summary_start_col + 2)
+    c.alignment = center_align
+    ws.column_dimensions["AK"].width = 12
+    ws.merge_cells(start_row=1, start_column=37, end_row=2, end_column=37)
     
-    # Kwota
-    c = ws.cell(row=1, column=summary_start_col + 3, value="Kwota")
-    c.border = medium_border
-    ws.merge_cells(start_row=1, start_column=summary_start_col + 3, end_row=2, end_column=summary_start_col + 3)
+    # Payroll Headers - Start at AL (38)
+    payroll_headers = [
+        "premia (DODATEK GOTÓWKĄ DO WYPŁATY)", "PREMIA PRZELEW", "PŁACA NA KONTO", 
+        "Komornik", "PPK", "ubezp. Pak. Med.sport.", 
+        "PREMIA LISTA PŁAC GOTÓWKA", "PŁACA GOTÓWKA LISTA", "PREMIA GOTÓWKA", 
+        "WYPŁATY DO POKRYCIA", "POTRĄCENIA", "DO WYPŁATY GOTÓWKĄ"
+    ]
+    payroll_start_col = 38
+    for i, header in enumerate(payroll_headers):
+        col_idx = payroll_start_col + i
+        c = ws.cell(row=1, column=col_idx, value=header)
+        c.border = medium_border
+        # Wrap text for long headers
+        c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        ws.merge_cells(start_row=1, start_column=col_idx, end_row=2, end_column=col_idx)
 
     users_sorted = sorted(user_data.values(), key=lambda x: (
         (x["team"].name if x["team"] else ""), 
         (x["name"] or "")
     ))
     
-    # Define range for SUMIF formula: E2 to (StartCol of Summary - 1)
-    last_day_col_letter = get_column_letter(summary_start_col - 1)
-    sum_range_str = f"$E$2:${last_day_col_letter}$2"
+
 
     current_row = 3
     for idx, item in enumerate(users_sorted):
@@ -405,69 +401,58 @@ async def export_monthly_excel(
         c.border = medium_border
         c.alignment = left_align
         
-        # C: Rate
-        c = ws.cell(row=current_row, column=3, value=item["rate"])
+        # C: Working Days
+        # Count days where value is number > 0
+        working_days = sum(1 for val in item["days"].values() if isinstance(val, (int, float)) and val > 0)
+        c = ws.cell(row=current_row, column=3, value=working_days)
         c.border = medium_border
         c.alignment = center_align
 
-        # D: Buffer
-        c = ws.cell(row=current_row, column=4)
+        # D: Rate
+        c = ws.cell(row=current_row, column=4, value=item["rate"])
         c.border = medium_border
 
         # Days Data
         for day in range(1, 32):
-            start_col = 5 + (day - 1) * 3
+            col_idx = 4 + day
             
-            # Hours (G)
-            val_h = item["days"].get(day, None)
-            c = ws.cell(row=current_row, column=start_col, value=val_h)
-            c.border = medium_border
-            c.alignment = center_align
-            if day_styles.get(day): c.fill = day_styles[day]
-
-            # Meals (P)
-            val_p = item["meals"].get(day, None)
-            c = ws.cell(row=current_row, column=start_col + 1, value=val_p)
-            c.border = medium_border
-            c.alignment = center_align
-            if day_styles.get(day): c.fill = day_styles[day]
-
-            # Accommodation (N)
-            val_n = item["accommodation"].get(day, None)
-            c = ws.cell(row=current_row, column=start_col + 2, value=val_n)
+            # Hours / Absence
+            if day in item["days"]:
+                val = item["days"][day]
+                # If it's a string (absence), it will be text. If float/int, it's hours.
+                c = ws.cell(row=current_row, column=col_idx, value=val)
+            else:
+                c = ws.cell(row=current_row, column=col_idx)
+                
             c.border = medium_border
             c.alignment = center_align
             if day_styles.get(day): c.fill = day_styles[day]
 
         # Summary Columns
-        row_range = f"$E{current_row}:${last_day_col_letter}{current_row}"
+        # Total Hours = SUM(E3:AI3)
+        row_range = f"E{current_row}:AI{current_row}"
         
-        # Total Hours
-        # =SUMPRODUCT((MOD(COLUMN($E3:$CL3)-COLUMN($E$2),3)=0)*ISNUMBER($E3:$CL3), $E3:$CL3)
-        formula_h = f'=SUMPRODUCT((MOD(COLUMN({row_range})-COLUMN($E$2),3)=0)*ISNUMBER({row_range}), {row_range})'
-        c = ws.cell(row=current_row, column=summary_start_col, value=formula_h)
+        # ILOŚĆ GODZIN (AJ / 36)
+        # formula_h = f'=SUMPRODUCT((MOD(COLUMN({row_range})-COLUMN($E$2),3)=0)*ISNUMBER({row_range}), {row_range})'
+        # Simplified to SUM because we separate columns now. 
+        # Excel SUM ignores text, so absences (strings) are safe.
+        formula_h = f'=SUM({row_range})'
+        c = ws.cell(row=current_row, column=36, value=formula_h)
         c.border = medium_border
         c.alignment = center_align
         
-        # Total Meals
-        formula_p = f'=SUMPRODUCT((MOD(COLUMN({row_range})-COLUMN($E$2),3)=1)*ISNUMBER({row_range}), {row_range})'
-        c = ws.cell(row=current_row, column=summary_start_col + 1, value=formula_p)
+        # NALEŻNOŚĆ (AK / 37)
+        # =AJ3 * D3
+        formula_pay = f'=AJ{current_row}*D{current_row}'
+        c = ws.cell(row=current_row, column=37, value=formula_pay)
         c.border = medium_border
         c.alignment = center_align
 
-        # Total Accommodation
-        formula_n = f'=SUMPRODUCT((MOD(COLUMN({row_range})-COLUMN($E$2),3)=2)*ISNUMBER({row_range}), {row_range})'
-        c = ws.cell(row=current_row, column=summary_start_col + 2, value=formula_n)
-        c.border = medium_border
-        c.alignment = center_align
-
-        # Payment: Total Hours * Rate (Col C)
-        # Summary Start Col letter
-        total_hours_col_letter = get_column_letter(summary_start_col)
-        formula_pay = f'={total_hours_col_letter}{current_row}*C{current_row}'
-        c = ws.cell(row=current_row, column=summary_start_col + 3, value=formula_pay)
-        c.border = medium_border
-        c.alignment = center_align
+        # Payroll Columns (Empty cells with borders)
+        payroll_start_col = 38
+        for i in range(len(payroll_headers)):
+             c = ws.cell(row=current_row, column=payroll_start_col + i)
+             c.border = medium_border
 
         current_row += 1
 
