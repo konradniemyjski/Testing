@@ -381,68 +381,59 @@ async def export_monthly_excel(
              day_styles[day] = None
 
     # Columns: 
-    # A: Lp, B: Name, C: Days, D: Rate, E: Type (G/N/P)
+    # A: Lp, B: Name, C: Days, D: Rate, E: Type (Kod/G/N/P)
     # F starts Days (day 1)
     
     # --- HEADERS ---
     
     # Header Labels (Col A-D)
-    header_rows = [
-        "Data", 
-        "Kod budowy", 
-        "Firma nocleg", 
-        "Firma posiłek"
-    ]
+    # Row 2: Acc Firm
+    # Row 3: Meal Firm
+    # Row 4: Day Num
     
-    ws.cell(row=2, column=2, value="Kod budowy z opisem").font = Font(bold=True)
-    ws.cell(row=3, column=2, value="Firma nocleg").font = Font(bold=True)
-    ws.cell(row=4, column=2, value="Firma posiłek").font = Font(bold=True)
+    ws.cell(row=2, column=2, value="Firma nocleg").font = Font(bold=True)
+    ws.cell(row=3, column=2, value="Firma posiłek").font = Font(bold=True)
     
-    # Fill Daily Info
+    # Fill Daily Info (Header)
     for day in range(1, 32):
-        col_idx = 5 + day # F is 6. 1=6
+        col_idx = 5 + day # F is 6
         
-        # Row 2: Projects
-        projs = daily_headers[day]["projs"]
-        ws.cell(row=2, column=col_idx, value="\n".join(projs)).alignment = center_align
-        ws.cell(row=2, column=col_idx).border = medium_border
-        
-        # Row 3: Accs
+        # Row 2: Accs
         accs = daily_headers[day]["accs"]
-        ws.cell(row=3, column=col_idx, value="\n".join(accs)).alignment = center_align
-        ws.cell(row=3, column=col_idx).border = medium_border
+        ws.cell(row=2, column=col_idx, value="\n".join(accs)).alignment = center_align
+        ws.cell(row=2, column=col_idx).border = medium_border
 
-        # Row 4: Meals
+        # Row 3: Meals
         meals = daily_headers[day]["meals"]
-        ws.cell(row=4, column=col_idx, value="\n".join(meals)).alignment = center_align
-        ws.cell(row=4, column=col_idx).border = medium_border
+        ws.cell(row=3, column=col_idx, value="\n".join(meals)).alignment = center_align
+        ws.cell(row=3, column=col_idx).border = medium_border
         
-        # Row 5: Day Num
-        c = ws.cell(row=5, column=col_idx, value=day)
+        # Row 4: Day Num
+        c = ws.cell(row=4, column=col_idx, value=day)
         c.border = medium_border
         c.alignment = center_align
         c.font = Font(bold=True)
         if day_styles.get(day): c.fill = day_styles[day]
 
-    # Fixed Header Labels (Row 5 - Main Table Header)
+    # Fixed Header Labels (Row 4 - Main Table Header)
     # Lp
-    c = ws.cell(row=5, column=1, value="Lp")
+    c = ws.cell(row=4, column=1, value="Lp")
     c.border = medium_border
     c.alignment = center_align
     # Name
-    c = ws.cell(row=5, column=2, value="Nazwisko i Imię")
+    c = ws.cell(row=4, column=2, value="Nazwisko i Imię")
     c.border = medium_border
     c.alignment = center_align
     # Days
-    c = ws.cell(row=5, column=3, value="Liczba dni")
+    c = ws.cell(row=4, column=3, value="Liczba dni")
     c.border = medium_border
     c.alignment = center_align
     # Rate
-    c = ws.cell(row=5, column=4, value="Stawka")
+    c = ws.cell(row=4, column=4, value="Stawka")
     c.border = medium_border
     c.alignment = center_align
     # Type
-    c = ws.cell(row=5, column=5, value="Typ")
+    c = ws.cell(row=4, column=5, value="Typ")
     c.border = medium_border
     c.alignment = center_align
 
@@ -451,7 +442,7 @@ async def export_monthly_excel(
     
     summary_titles = ["ILOŚĆ GODZIN", "Noclegi", "Posiłki", "NALEŻNOŚĆ"]
     for i, title in enumerate(summary_titles):
-        c = ws.cell(row=5, column=summary_start_col + i, value=title)
+        c = ws.cell(row=4, column=summary_start_col + i, value=title)
         c.border = medium_border
         c.alignment = center_align
         
@@ -462,7 +453,7 @@ async def export_monthly_excel(
         "WYPŁATY POKRYCIA", "POTRĄCENIA", "DO WYPŁATY"
     ]
     for i, title in enumerate(payroll_headers):
-        c = ws.cell(row=5, column=summary_start_col + 4 + i, value=title)
+        c = ws.cell(row=4, column=summary_start_col + 4 + i, value=title)
         c.border = medium_border
         c.alignment = center_align
         
@@ -472,13 +463,13 @@ async def export_monthly_excel(
         (x["name"] or "")
     ))
     
-    current_row = 6
+    current_row = 5
     for idx, item in enumerate(users_sorted):
         is_gray = (idx % 2 == 1)
         base_fill = fill_gray if is_gray else None
         
         start_r = current_row
-        end_r = current_row + 2
+        end_r = current_row + 3 # 4 rows: Kod, G, N, P
         
         # Merge Fixed Columns (A-D)
         # Lp (A)
@@ -511,7 +502,7 @@ async def export_monthly_excel(
         if base_fill: c.fill = base_fill
         
         # Type (E) - Not merged
-        types = ["G", "N", "P"]
+        types = ["Budowa", "G", "N", "P"] 
         for i, t in enumerate(types):
             c = ws.cell(row=start_r + i, column=5, value=t)
             c.border = medium_border
@@ -523,77 +514,82 @@ async def export_monthly_excel(
             col_idx = 5 + day
             d_fill = day_styles.get(day) or base_fill
             
-            # G - Hours
+            # Row 1: Budowa (Project)
+            proj_str = item["projects"].get(day, "")
+            c = ws.cell(row=start_r, column=col_idx, value=proj_str)
+            c.border = medium_border
+            c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            if d_fill: c.fill = d_fill
+            
+            # Row 2: G (Hours)
             val_h = item["days"].get(day, "")
-            c = ws.cell(row=start_r, column=col_idx, value=val_h)
+            c = ws.cell(row=start_r + 1, column=col_idx, value=val_h)
             c.border = medium_border
             c.alignment = center_align
             if d_fill: c.fill = d_fill
             
-            # N - Acc (Tak/Nie)
+            # Row 3: N - Acc (Tak/Nie)
             count_n = item["acc_count"].get(day, 0)
             val_n = "Tak" if count_n > 0 else ""
-            c = ws.cell(row=start_r + 1, column=col_idx, value=val_n)
+            c = ws.cell(row=start_r + 2, column=col_idx, value=val_n)
             c.border = medium_border
             c.alignment = center_align
             if d_fill: c.fill = d_fill
             
-            # P - Meals (Tak/Nie)
+            # Row 4: P - Meals (Tak/Nie)
             count_p = item["meals_count"].get(day, 0)
             val_p = "Tak" if count_p > 0 else ""
-            c = ws.cell(row=start_r + 2, column=col_idx, value=val_p)
+            c = ws.cell(row=start_r + 3, column=col_idx, value=val_p)
             c.border = medium_border
             c.alignment = center_align
             if d_fill: c.fill = d_fill
             
         # Summary Formulas
-        # Total Hours (G sum)
-        row_g = start_r
-        row_n = start_r + 1
-        row_p = start_r + 2
+        # Row 1 (Budowa) - No summary
         
-        last_day_col_let = get_column_letter(6 + 30) # AJ
+        # Row 2 (G)
+        row_g = start_r + 1
+        # Row 3 (N) 
+        row_n = start_r + 2
+        # Row 4 (P)
+        row_p = start_r + 3
+        
+        last_day_col_let = get_column_letter(6 + 30) # AJ (F is 6. 6+30=36 -> AJ)
         range_g = f"F{row_g}:{last_day_col_let}{row_g}"
         range_n = f"F{row_n}:{last_day_col_let}{row_n}"
         range_p = f"F{row_p}:{last_day_col_let}{row_p}"
         
         # Hours
         form_h = f"=SUM({range_g})"
-        c = ws.cell(row=start_r, column=summary_start_col, value=form_h)
-        c.border = medium_border
-        if base_fill: c.fill = base_fill
+        c = ws.cell(row=start_r, column=summary_start_col, value=form_h) # Top-align summary with user block?
+        # Actually summary should probably be merged across 4 rows as well
         
-        # Acc
-        form_n = f'=COUNTIF({range_n}, "Tak")'
-        c = ws.cell(row=start_r, column=summary_start_col + 1, value=form_n)
-        c.border = medium_border
-        if base_fill: c.fill = base_fill
+        # Note: Merging Formula cells can be tricky if not careful, but usually works if value is in top-left.
+        # I'll put values in the cells corresponding to the rows, or just merge all 4.
         
-        # Meals
-        form_p = f'=COUNTIF({range_p}, "Tak")'
-        c = ws.cell(row=start_r, column=summary_start_col + 2, value=form_p)
-        c.border = medium_border
-        if base_fill: c.fill = base_fill
-        
-        # Pay
-        total_h_cell = f"{get_column_letter(summary_start_col)}{start_r}"
-        rate_cell = f"D{start_r}"
-        form_pay = f"={total_h_cell}*{rate_cell}"
-        c = ws.cell(row=start_r, column=summary_start_col + 3, value=form_pay)
-        c.border = medium_border
-        c.number_format = '0.00'
-        if base_fill: c.fill = base_fill
-        
-        # Merge summary types for cleaner look? 
         for k in range(4):
             col = summary_start_col + k
             ws.merge_cells(start_row=start_r, start_column=col, end_row=end_r, end_column=col)
-            # Re-apply border/style to merged
-            for r in range(start_r, end_r + 1):
-                c = ws.cell(row=r, column=col)
-                c.border = medium_border
-                c.alignment = center_align
-                if base_fill: c.fill = base_fill
+            
+            c = ws.cell(row=start_r, column=col)
+            c.border = medium_border
+            c.alignment = center_align
+            if base_fill: c.fill = base_fill
+            
+            # Assign formula to the merged text cell
+            if k == 0: # Hours
+                c.value = form_h
+            elif k == 1: # Acc
+                 c.value = f'=COUNTIF({range_n}, "Tak")'
+            elif k == 2: # Meals
+                 c.value = f'=COUNTIF({range_p}, "Tak")'
+            elif k == 3: # Pay
+                 # Pay = total_hours * rate
+                 # Rate is D{start_r} (merged) -> D{start_r} is safe
+                 # Total Hours is at this column (summary_start_col){start_r}
+                 c_hours_cell = f"{get_column_letter(summary_start_col)}{start_r}"
+                 c.value = f"={c_hours_cell}*D{start_r}"
+                 c.number_format = '0.00'
 
         # Payroll Columns (Empty) - Merged
         for k in range(len(payroll_headers)):
@@ -604,7 +600,7 @@ async def export_monthly_excel(
                 c.border = medium_border
                 if base_fill: c.fill = base_fill
 
-        current_row += 3
+        current_row += 4
         
     # Auto-fit (Roughly)
     ws.column_dimensions['A'].width = 5
