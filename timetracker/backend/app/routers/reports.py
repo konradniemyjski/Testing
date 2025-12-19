@@ -216,10 +216,8 @@ async def export_monthly_excel(
         raise HTTPException(status_code=400, detail="Invalid year or month")
         
     # Query Data using shared logic from worklogs.py
-    # This ensures consistency in permissions and filtering
     base_query = _build_user_worklog_query(db, current_user, project_id, start_date, end_date)
     
-    # Add eager loading required for the report
     query = (
         base_query
         .options(joinedload(models.WorkLog.user).joinedload(models.User.team))
@@ -228,17 +226,15 @@ async def export_monthly_excel(
     
     worklogs = query.all()
     
-    # Organize data by Worker (TeamMember or User fallback)
-    # Map worker_key -> { name, team, rate, days: { day: hours }, meals: { day: count }, accommodation: { day: count } }
+    # Organize data
     user_data = {}
     
     for log in worklogs:
-        # Determine unique key and worker details
         if log.team_member_id:
             key = f"tm_{log.team_member_id}"
             worker_name = log.team_member.name
             team_obj = log.team_member.team
-            rate = 0.0 # TeamMember currently has no rate field
+            rate = 0.0 
         else:
             key = f"u_{log.user_id}"
             worker_name = log.user.full_name or log.user.email
@@ -281,20 +277,17 @@ async def export_monthly_excel(
     # Styles
     thin_side = Side(style='thin')
     medium_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
-    
     center_align = Alignment(horizontal='center', vertical='center')
     left_align = Alignment(horizontal='left', vertical='center')
-    right_align = Alignment(horizontal='right', vertical='center')
 
     # Fills
     fill_red = PatternFill(start_color="FFFF0000", end_color="FFFF0000", fill_type="solid")
     fill_yellow = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
     
-    # Calculate Holidays and Weekends for this month
     holidays = get_polish_holidays(year)
-    
-    # Map day_number -> PatternFill | None
     day_styles = {}
+    
+    # Pre-calculate day styles
     for day in range(1, 32):
         try:
             current_date = datetime(year, month, day).date()
@@ -307,40 +300,95 @@ async def export_monthly_excel(
         except ValueError:
              day_styles[day] = None
 
-    # Headers Row 1
-    headers = ["Lp", "Nazwisko i Imię", "Stawka", ""]
-    for i, h in enumerate(headers, 1):
-        c = ws.cell(row=1, column=i, value=h)
-        c.border = medium_border
-        if i == 2:
-            c.alignment = left_align
-        else:
-            c.alignment = center_align
+    # Base Columns (Fixed): Lp, Name, Rate, Buffer (4 cols)
+    # Day Columns: 31 days * 3 cols = 93 cols
+    # End columns: 4 cols
+    
+    # HEADERS ROW 1: Days merging
+    ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=1)
+    c = ws.cell(row=1, column=1, value="Lp")
+    c.border = medium_border
+    c.alignment = center_align
 
-    # Day headers
+    ws.merge_cells(start_row=1, start_column=2, end_row=2, end_column=2)
+    c = ws.cell(row=1, column=2, value="Nazwisko i Imię")
+    c.border = medium_border
+    c.alignment = left_align
+
+    ws.merge_cells(start_row=1, start_column=3, end_row=2, end_column=3)
+    c = ws.cell(row=1, column=3, value="Stawka")
+    c.border = medium_border
+    c.alignment = center_align
+
+    ws.merge_cells(start_row=1, start_column=4, end_row=2, end_column=4)
+    c = ws.cell(row=1, column=4, value="")
+    c.border = medium_border
+
+    # Days Headers
     for day in range(1, 32):
-        col_idx = 4 + day
-        c = ws.cell(row=1, column=col_idx, value=day)
+        start_col = 5 + (day - 1) * 3
+        # Merge 3 cells for the day number
+        ws.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=start_col + 2)
+        c = ws.cell(row=1, column=start_col, value=day)
         c.border = medium_border
         c.alignment = center_align
+        
+        # Apply style to the day header
         if day_styles.get(day):
-            c.fill = day_styles[day]
+            # Apply to all 3 cells in merge range (though openpyxl usually styles top-left)
+            for i in range(3):
+                cell = ws.cell(row=1, column=start_col + i)
+                cell.fill = day_styles[day]
+                cell.border = medium_border
 
-    # Summary headers
-    c = ws.cell(row=1, column=36, value="Razem")
-    c.border = medium_border
-    c = ws.cell(row=1, column=37, value="Kwota")
-    c.border = medium_border
+        # Sub-headers in Row 2: G (Godz), P (Posiłki), N (Noclegi)
+        sub_headers = ["G", "P", "N"]
+        for i, header in enumerate(sub_headers):
+            c = ws.cell(row=2, column=start_col + i, value=header)
+            c.border = medium_border
+            c.alignment = center_align
+            # Apply color to sub-header as well
+            if day_styles.get(day):
+                c.fill = day_styles[day]
+            
+            # Set narrow width for these columns
+            col_letter = get_column_letter(start_col + i)
+            ws.column_dimensions[col_letter].width = 4
 
-    current_row = 2
+    # Summary Headers (Right after day 31)
+    summary_start_col = 5 + (31 * 3)
+    
+    # Razem Godziny
+    c = ws.cell(row=1, column=summary_start_col, value="Godziny")
+    c.border = medium_border
+    ws.merge_cells(start_row=1, start_column=summary_start_col, end_row=2, end_column=summary_start_col)
+    
+    # Razem Posiłki
+    c = ws.cell(row=1, column=summary_start_col + 1, value="Posiłki")
+    c.border = medium_border
+    ws.merge_cells(start_row=1, start_column=summary_start_col + 1, end_row=2, end_column=summary_start_col + 1)
+
+    # Razem Noclegi
+    c = ws.cell(row=1, column=summary_start_col + 2, value="Noclegi")
+    c.border = medium_border
+    ws.merge_cells(start_row=1, start_column=summary_start_col + 2, end_row=2, end_column=summary_start_col + 2)
+    
+    # Kwota
+    c = ws.cell(row=1, column=summary_start_col + 3, value="Kwota")
+    c.border = medium_border
+    ws.merge_cells(start_row=1, start_column=summary_start_col + 3, end_row=2, end_column=summary_start_col + 3)
+
     users_sorted = sorted(user_data.values(), key=lambda x: (
         (x["team"].name if x["team"] else ""), 
         (x["name"] or "")
     ))
     
-    # Fill Data
+    # Define range for SUMIF formula: E2 to (StartCol of Summary - 1)
+    last_day_col_letter = get_column_letter(summary_start_col - 1)
+    sum_range_str = f"$E$2:${last_day_col_letter}$2"
+
+    current_row = 3
     for idx, item in enumerate(users_sorted):
-        # 1. Main Row: HOURS
         # A: LP
         c = ws.cell(row=current_row, column=1, value=idx + 1)
         c.border = medium_border
@@ -349,7 +397,6 @@ async def export_monthly_excel(
         # B: Name
         c = ws.cell(row=current_row, column=2, value=item["name"])
         c.border = medium_border
-        c.font = Font(bold=True)
         c.alignment = left_align
         
         # C: Rate
@@ -361,68 +408,61 @@ async def export_monthly_excel(
         c = ws.cell(row=current_row, column=4)
         c.border = medium_border
 
-        # Days (Hours)
+        # Days Data
         for day in range(1, 32):
-            col_idx = 4 + day
-            val = item["days"].get(day, None)
-            c = ws.cell(row=current_row, column=col_idx, value=val)
+            start_col = 5 + (day - 1) * 3
+            
+            # Hours (G)
+            val_h = item["days"].get(day, None)
+            c = ws.cell(row=current_row, column=start_col, value=val_h)
             c.border = medium_border
             c.alignment = center_align
-            if day_styles.get(day):
-                c.fill = day_styles[day]
-        
-        # AJ: Sum Hours
-        c = ws.cell(row=current_row, column=36, value=f"=SUM(E{current_row}:AI{current_row})")
-        c.border = medium_border
-        c.font = Font(bold=True)
-        
-        # AK: Payment
-        c = ws.cell(row=current_row, column=37, value=f"=AJ{current_row}*C{current_row}")
-        c.border = medium_border
-        c.font = Font(bold=True)
+            if day_styles.get(day): c.fill = day_styles[day]
 
-        current_row += 1
-
-        # 2. Sub-row: MEALS (Posiłki)
-        # B: Label
-        c = ws.cell(row=current_row, column=2, value="   Posiłki") # Indented
-        c.alignment = left_align
-        
-        # Days (Meals)
-        for day in range(1, 32):
-            col_idx = 4 + day
-            val = item["meals"].get(day, None)
-            c = ws.cell(row=current_row, column=col_idx, value=val)
-            c.border = Border(bottom=thin_side) # lighter border?
+            # Meals (P)
+            val_p = item["meals"].get(day, None)
+            c = ws.cell(row=current_row, column=start_col + 1, value=val_p)
+            c.border = medium_border
             c.alignment = center_align
-            c.font = Font(size=9, color="555555")
+            if day_styles.get(day): c.fill = day_styles[day]
 
-        # AJ: Sum Meals
-        c = ws.cell(row=current_row, column=36, value=f"=SUM(E{current_row}:AI{current_row})")
-        c.alignment = center_align
-        c.font = Font(size=9)
-        
-        current_row += 1
-
-        # 3. Sub-row: ACCOMMODATION (Noclegi)
-        # B: Label
-        c = ws.cell(row=current_row, column=2, value="   Noclegi") # Indented
-        c.alignment = left_align
-
-        # Days (Accommodation)
-        for day in range(1, 32):
-            col_idx = 4 + day
-            val = item["accommodation"].get(day, None)
-            c = ws.cell(row=current_row, column=col_idx, value=val)
-            c.border = Border(bottom=medium_border.bottom) # Close the block
+            # Accommodation (N)
+            val_n = item["accommodation"].get(day, None)
+            c = ws.cell(row=current_row, column=start_col + 2, value=val_n)
+            c.border = medium_border
             c.alignment = center_align
-            c.font = Font(size=9, color="555555")
+            if day_styles.get(day): c.fill = day_styles[day]
 
-        # AJ: Sum Accommodation
-        c = ws.cell(row=current_row, column=36, value=f"=SUM(E{current_row}:AI{current_row})")
-        c.alignment = center_align
-        c.font = Font(size=9)
+        # Summary Columns
+        row_range = f"$E{current_row}:${last_day_col_letter}{current_row}"
         
+        # Total Hours
+        # =SUMIF($E$2:$CL$2, "G", $E3:$CL3)
+        formula_h = f'=SUMIF({sum_range_str}, "G", {row_range})'
+        c = ws.cell(row=current_row, column=summary_start_col, value=formula_h)
+        c.border = medium_border
+        c.alignment = center_align
+        
+        # Total Meals
+        formula_p = f'=SUMIF({sum_range_str}, "P", {row_range})'
+        c = ws.cell(row=current_row, column=summary_start_col + 1, value=formula_p)
+        c.border = medium_border
+        c.alignment = center_align
+
+        # Total Accommodation
+        formula_n = f'=SUMIF({sum_range_str}, "N", {row_range})'
+        c = ws.cell(row=current_row, column=summary_start_col + 2, value=formula_n)
+        c.border = medium_border
+        c.alignment = center_align
+
+        # Payment: Total Hours * Rate (Col C)
+        # Summary Start Col letter
+        total_hours_col_letter = get_column_letter(summary_start_col)
+        formula_pay = f'={total_hours_col_letter}{current_row}*C{current_row}'
+        c = ws.cell(row=current_row, column=summary_start_col + 3, value=formula_pay)
+        c.border = medium_border
+        c.alignment = center_align
+
         current_row += 1
 
     # Save to buffer
