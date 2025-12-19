@@ -252,7 +252,13 @@ async def export_monthly_excel(
             }
         
         day = log.date.day
-        user_data[key]["days"][day] = user_data[key]["days"].get(day, 0) + log.hours_worked
+        if log.absences > 0:
+            user_data[key]["days"][day] = log.notes or "Nieobecność"
+        else:
+            current_val = user_data[key]["days"].get(day, 0)
+            if isinstance(current_val, (int, float)):
+                user_data[key]["days"][day] = current_val + log.hours_worked
+        
         user_data[key]["meals"][day] = user_data[key]["meals"].get(day, 0) + log.meals_served
         user_data[key]["accommodation"][day] = user_data[key]["accommodation"].get(day, 0) + log.overnight_stays
 
