@@ -33,11 +33,16 @@
 
             <div class="form-group">
               <label for="siteCode">Kod budowy</label>
-              <input 
+              <select 
                 id="siteCode" 
                 v-model="form.site_code" 
-                type="text" 
-              />
+                required
+              >
+                <option value="" disabled>Wybierz kod</option>
+                <option v-for="p in projects" :key="p.id" :value="p.code">
+                  {{ p.code }}
+                </option>
+              </select>
             </div>
 
             <div class="form-group" v-if="!isUser">
@@ -553,6 +558,16 @@ watch(
     const project = findProject(newId ?? undefined)
     if (project) {
       form.site_code = project.code
+    }
+  }
+)
+
+watch(
+  () => form.site_code,
+  (newCode) => {
+    const project = projects.value.find(p => p.code === newCode)
+    if (project && project.id !== form.project_id) {
+      form.project_id = project.id
     }
   }
 )
