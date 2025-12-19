@@ -818,6 +818,23 @@ async def export_monthly_excel(
             set_border(c)
         row_idx += 1
         
+        # Row 3b: % Time (Share of User's Total Hours)
+        c = ws_emp.cell(row=row_idx, column=1, value="% Czasu")
+        set_border(c)
+        
+        # Empty cells for fixed columns
+        for k in range(2, 6): set_border(ws_emp.cell(row=row_idx, column=k))
+        
+        for i, proj in enumerate(all_projects):
+            p_code = proj.split(" ")[0]
+            val = item["project_stats"].get(p_code, {}).get("hours", 0)
+            pct = (val / total_user_hours) if total_user_hours > 0 else 0
+            
+            c = ws_emp.cell(row=row_idx, column=6+i, value=pct)
+            c.number_format = '0.00%'
+            set_border(c)
+        row_idx += 1
+        
         # Row 4: Meals (Skip Fixed Stats)
         c = ws_emp.cell(row=row_idx, column=1, value="Posiłki")
         set_border(c)
