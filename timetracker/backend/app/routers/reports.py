@@ -359,7 +359,7 @@ async def export_monthly_excel(
             
             # Set narrow width for these columns
             col_letter = get_column_letter(start_col + i)
-            ws.column_dimensions[col_letter].width = 4
+            # ws.column_dimensions[col_letter].width = 4
 
     # Summary Headers (Right after day 31)
     summary_start_col = 5 + (31 * 3)
@@ -470,6 +470,11 @@ async def export_monthly_excel(
         c.alignment = center_align
 
         current_row += 1
+
+    # Auto-fit columns
+    for column_cells in ws.columns:
+        length = max(len(str(cell.value) or "") for cell in column_cells)
+        ws.column_dimensions[get_column_letter(column_cells[0].column)].width = length + 2
 
     # Save to buffer
     stream = BytesIO()
