@@ -307,6 +307,7 @@ async def export_monthly_excel(
     # Fills
     fill_red = PatternFill(start_color="FFFF0000", end_color="FFFF0000", fill_type="solid")
     fill_yellow = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
+    fill_gray = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
     
     holidays = get_polish_holidays(year)
     day_styles = {}
@@ -435,6 +436,9 @@ async def export_monthly_excel(
 
     current_row = 3
     for idx, item in enumerate(users_sorted):
+        is_gray = (idx % 2 == 1)
+        base_fill = fill_gray if is_gray else None
+        
         # Merge columns A, B, C, D vertically for the 3 rows
         for col_idx in range(1, 5):
             ws.merge_cells(start_row=current_row, start_column=col_idx, end_row=current_row + 2, end_column=col_idx)
@@ -443,6 +447,7 @@ async def export_monthly_excel(
                 c = ws.cell(row=r, column=col_idx)
                 c.border = medium_border
                 c.alignment = center_align if col_idx != 2 else left_align
+                if base_fill: c.fill = base_fill
 
         # A: Lp
         c = ws.cell(row=current_row, column=1, value=idx + 1)
@@ -464,20 +469,23 @@ async def export_monthly_excel(
         for day in range(1, 32):
             start_col = 5 + (day - 1) * 2
             
+            # Determine fill for this day: Priority: Weekend/Holiday -> Gray -> None
+            day_fill = day_styles.get(day) or base_fill
+            
             # --- ROW 1 (Work) ---
             # Col 1: Hours
             val = item["days"].get(day, 0)
             c = ws.cell(row=current_row, column=start_col, value=val)
             c.border = medium_border
             c.alignment = center_align
-            if day_styles.get(day): c.fill = day_styles[day]
+            if day_fill: c.fill = day_fill
             
             # Col 2: Project
             val_proj = item["projects"].get(day, None)
             c = ws.cell(row=current_row, column=start_col + 1, value=val_proj)
             c.border = medium_border
             c.alignment = center_align
-            if day_styles.get(day): c.fill = day_styles[day]
+            if day_fill: c.fill = day_fill
 
             # --- ROW 2 (Meals) ---
             # Col 1: Count
@@ -485,14 +493,14 @@ async def export_monthly_excel(
             c = ws.cell(row=current_row + 1, column=start_col, value=val_mc)
             c.border = medium_border
             c.alignment = center_align
-            if day_styles.get(day): c.fill = day_styles[day]
+            if day_fill: c.fill = day_fill
             
             # Col 2: Company
             val_mn = item["meals_info"].get(day, None)
             c = ws.cell(row=current_row + 1, column=start_col + 1, value=val_mn)
             c.border = medium_border
             c.alignment = center_align
-            if day_styles.get(day): c.fill = day_styles[day]
+            if day_fill: c.fill = day_fill
 
             # --- ROW 3 (Accom) ---
             # Col 1: Count
@@ -500,14 +508,14 @@ async def export_monthly_excel(
             c = ws.cell(row=current_row + 2, column=start_col, value=val_ac)
             c.border = medium_border
             c.alignment = center_align
-            if day_styles.get(day): c.fill = day_styles[day]
+            if day_fill: c.fill = day_fill
             
             # Col 2: Company
             val_an = item["acc_info"].get(day, None)
             c = ws.cell(row=current_row + 2, column=start_col + 1, value=val_an)
             c.border = medium_border
             c.alignment = center_align
-            if day_styles.get(day): c.fill = day_styles[day]
+            if day_fill: c.fill = day_fill
 
 
         # Summary Columns
@@ -522,6 +530,7 @@ async def export_monthly_excel(
                 c = ws.cell(row=r, column=col_idx)
                 c.border = medium_border
                 c.alignment = center_align
+                if base_fill: c.fill = base_fill
 
         # Formula Range: Covers all day columns (Value & Description)
         # We need to sum only every other column (Value columns: E, G, I...)
@@ -561,6 +570,7 @@ async def export_monthly_excel(
              for r in range(current_row, current_row + 3):
                  c = ws.cell(row=r, column=col_idx)
                  c.border = medium_border
+                 if base_fill: c.fill = base_fill
 
         current_row += 3
 
