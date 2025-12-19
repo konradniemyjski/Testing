@@ -693,7 +693,7 @@ async def export_monthly_excel(
     ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE PROJEKTÓW").font = Font(bold=True)
     row_idx += 1
     
-    headers = ["Projekt", "Posiłki", "Noclegi"]
+    headers = ["Projekt", "Posiłki", "% Posiłków", "Noclegi", "% Noclegów"]
     for i, h in enumerate(headers):
         c = ws_summary.cell(row=row_idx, column=2+i, value=h)
         set_border(c)
@@ -701,91 +701,33 @@ async def export_monthly_excel(
     row_idx += 1
     
     for proj_name, data in proj_global_summary.items():
+        # Project Name
         c = ws_summary.cell(row=row_idx, column=2, value=proj_name)
         set_border(c)
         
-        c = ws_summary.cell(row=row_idx, column=3, value=data["meals"])
+        # Meals
+        meals_count = data["meals"]
+        c = ws_summary.cell(row=row_idx, column=3, value=meals_count)
         set_border(c)
         
-        c = ws_summary.cell(row=row_idx, column=4, value=data["acc"])
+        # Meals %
+        pct_meals = (meals_count / total_meals) if total_meals > 0 else 0
+        c = ws_summary.cell(row=row_idx, column=4, value=pct_meals)
+        c.number_format = '0.00%'
+        set_border(c)
+        
+        # Acc
+        acc_count = data["acc"]
+        c = ws_summary.cell(row=row_idx, column=5, value=acc_count)
+        set_border(c)
+        
+        # Acc %
+        pct_acc = (acc_count / total_acc) if total_acc > 0 else 0
+        c = ws_summary.cell(row=row_idx, column=6, value=pct_acc)
+        c.number_format = '0.00%'
         set_border(c)
         
         row_idx += 1
-
-    row_idx += 3 # Gap
-
-    # 4. Detailed User Summary
-    ws_summary.cell(row=row_idx, column=2, value="SZCZEGÓŁOWE PODSUMOWANIE PRACOWNIKÓW").font = Font(bold=True, size=12)
-    row_idx += 2
-
-    # Check calculated user totals against data
-    for item in users_sorted:
-        total_hours = sum(p["hours"] for p in item["project_stats"].values())
-        total_meals = sum(p["meals"] for p in item["project_stats"].values())
-        total_acc = sum(p["acc"] for p in item["project_stats"].values())
-        
-        # Skip if no relevant data to show? (Optional, but cleaner)
-        if total_hours == 0 and total_meals == 0 and total_acc == 0:
-             continue
-             
-        # User Header
-        ws_summary.cell(row=row_idx, column=2, value=f"Pracownik: {item['name']}").font = Font(bold=True)
-        row_idx += 1
-        
-        # General Summary Table
-        ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE OGÓLNE").font = Font(bold=True)
-        row_idx += 1
-        
-        headers_gen = ["Suma godzin", "Suma posiłków", "Suma noclegów"]
-        vals_gen = [total_hours, total_meals, total_acc]
-        
-        for i, h in enumerate(headers_gen):
-             c = ws_summary.cell(row=row_idx, column=2+i, value=h)
-             set_border(c)
-        row_idx += 1
-        for i, v in enumerate(vals_gen):
-             c = ws_summary.cell(row=row_idx, column=2+i, value=v)
-             set_border(c)
-        row_idx += 2
-        
-        # Project Summary Table
-        ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE WG BUDOWY").font = Font(bold=True)
-        row_idx += 1
-        
-        headers_proj = ["Kod", "Nazwa", "Godziny", "% Całości", "Posiłki", "Noclegi"]
-        for i, h in enumerate(headers_proj):
-            c = ws_summary.cell(row=row_idx, column=2+i, value=h)
-            set_border(c)
-        row_idx += 1
-        
-        # Sort projects by code
-        sorted_projects = sorted(item["project_stats"].items())
-        
-        for p_code, stats in sorted_projects:
-            # Code
-            c = ws_summary.cell(row=row_idx, column=2, value=p_code)
-            set_border(c)
-            # Name
-            c = ws_summary.cell(row=row_idx, column=3, value=stats["name"])
-            set_border(c)
-            # Hours
-            c = ws_summary.cell(row=row_idx, column=4, value=stats["hours"])
-            set_border(c)
-            # %
-            pct = (stats["hours"] / total_hours) if total_hours > 0 else 0
-            c = ws_summary.cell(row=row_idx, column=5, value=pct)
-            c.number_format = '0.00%'
-            set_border(c)
-            # Meals
-            c = ws_summary.cell(row=row_idx, column=6, value=stats["meals"])
-            set_border(c)
-            # Acc
-            c = ws_summary.cell(row=row_idx, column=7, value=stats["acc"])
-            set_border(c)
-            
-            row_idx += 1
-            
-        row_idx += 2 # Gap between users
 
     # Auto-fit columns for Summary Sheet
     for column_cells in ws_summary.columns:
