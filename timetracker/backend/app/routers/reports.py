@@ -299,7 +299,8 @@ async def export_monthly_excel(
     holidays = get_polish_holidays(year)
     day_styles = {}
     
-    # Pre-calculate day styles
+    # Pre-calculate day styles and count working days
+    total_working_days = 0
     for day in range(1, 32):
         try:
             current_date = datetime(year, month, day).date()
@@ -309,6 +310,7 @@ async def export_monthly_excel(
                 day_styles[day] = fill_yellow
             else:
                 day_styles[day] = None
+                total_working_days += 1
         except ValueError:
              day_styles[day] = None
 
@@ -428,10 +430,8 @@ async def export_monthly_excel(
         c.border = medium_border
         c.alignment = left_align
         
-        # C: Working Days
-        # Count days where value is number > 0
-        working_days = sum(1 for val in item["days"].values() if isinstance(val, (int, float)) and val > 0)
-        c = ws.cell(row=current_row, column=3, value=working_days)
+        # C: Working Days (Total in month)
+        c = ws.cell(row=current_row, column=3, value=total_working_days)
         c.border = medium_border
         c.alignment = center_align
 
