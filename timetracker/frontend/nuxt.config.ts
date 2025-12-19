@@ -21,6 +21,13 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@pinia/nuxt', '@vueuse/nuxt'],
   css: ['@/assets/main.scss'],
+  app: {
+    head: {
+      htmlAttrs: {
+        lang: 'pl'
+      }
+    }
+  },
   runtimeConfig: {
     apiBaseInternal: fallbackInternalApiBase,
     public: {
