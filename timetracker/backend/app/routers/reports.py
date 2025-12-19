@@ -765,53 +765,76 @@ async def export_monthly_excel(
         absences = sum(1 for v in item["days"].values() if isinstance(v, str))
         total_user_hours = sum(p["hours"] for p in item["project_stats"].values())
         
-        # Row 1: Employee Header
-        header_text = f"{item['name']} (Dni pracy: {days_worked}/{total_working_days}, Nieobecności: {absences}, Suma godzin: {total_user_hours})"
-        c = ws_emp.cell(row=row_idx, column=1, value=header_text)
+        # Row 1: Employee Header (Name only)
+        c = ws_emp.cell(row=row_idx, column=1, value=item['name'])
         c.font = Font(bold=True)
         set_border(c)
         row_idx += 1
         
-        # Row 2: Header Labels + Project Headers
+        # Row 2: Header Labels + Fixed Stats Headers + Project Headers
         ws_emp.cell(row=row_idx, column=1, value="Kategoria")
         set_border(ws_emp.cell(row=row_idx, column=1))
         
+        # Fixed Headers
+        ws_emp.cell(row=row_idx, column=2, value="Dni pracy")
+        set_border(ws_emp.cell(row=row_idx, column=2))
+        ws_emp.cell(row=row_idx, column=3, value="Nieobecności")
+        set_border(ws_emp.cell(row=row_idx, column=3))
+        ws_emp.cell(row=row_idx, column=4, value="Suma godzin")
+        set_border(ws_emp.cell(row=row_idx, column=4))
+        
+        # Project Headers (Starting col 5)
         for i, proj in enumerate(all_projects):
-            c = ws_emp.cell(row=row_idx, column=2+i, value=proj)
+            c = ws_emp.cell(row=row_idx, column=5+i, value=proj)
             set_border(c)
-            # c.font = Font(bold=True) # Optional
             c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
         row_idx += 1
         
-        # Row 3: Hours
+        # Row 3: Hours (With Stats Values)
         c = ws_emp.cell(row=row_idx, column=1, value="Godziny")
         set_border(c)
+        
+        # Fixed Stats Values
+        c = ws_emp.cell(row=row_idx, column=2, value=f"{days_worked}/{total_working_days}") # Days
+        set_border(c)
+        c = ws_emp.cell(row=row_idx, column=3, value=absences) # Absences
+        set_border(c)
+        c = ws_emp.cell(row=row_idx, column=4, value=total_user_hours) # Total Hours
+        set_border(c)
+
         for i, proj in enumerate(all_projects):
-            # Extract CODE from "CODE Name" key, as project_stats keys are just CODE
             p_code = proj.split(" ")[0]
             val = item["project_stats"].get(p_code, {}).get("hours", 0)
-            c = ws_emp.cell(row=row_idx, column=2+i, value=val)
+            c = ws_emp.cell(row=row_idx, column=5+i, value=val)
             set_border(c)
         row_idx += 1
         
-        # Row 4: Meals
+        # Row 4: Meals (Skip Fixed Stats)
         c = ws_emp.cell(row=row_idx, column=1, value="Posiłki")
         set_border(c)
+        
+        # Empty cells for fixed columns
+        for k in range(2, 5): set_border(ws_emp.cell(row=row_idx, column=k))
+        
         for i, proj in enumerate(all_projects):
             p_code = proj.split(" ")[0]
             val = item["project_stats"].get(p_code, {}).get("meals", 0)
-            c = ws_emp.cell(row=row_idx, column=2+i, value=val)
+            c = ws_emp.cell(row=row_idx, column=5+i, value=val)
             set_border(c)
         row_idx += 1
             
-        # Row 5: Acc
+        # Row 5: Acc (Skip Fixed Stats)
         c = ws_emp.cell(row=row_idx, column=1, value="Noclegi")
         set_border(c)
+
+        # Empty cells for fixed columns
+        for k in range(2, 5): set_border(ws_emp.cell(row=row_idx, column=k))
+
         for i, proj in enumerate(all_projects):
             p_code = proj.split(" ")[0]
             val = item["project_stats"].get(p_code, {}).get("acc", 0)
-            c = ws_emp.cell(row=row_idx, column=2+i, value=val)
+            c = ws_emp.cell(row=row_idx, column=5+i, value=val)
             set_border(c)
         row_idx += 1
         
@@ -820,8 +843,11 @@ async def export_monthly_excel(
 
     # Auto-fit columns for Employee Summary
     ws_emp.column_dimensions['A'].width = 30 # User name / labels column
+    ws_emp.column_dimensions['B'].width = 12
+    ws_emp.column_dimensions['C'].width = 15
+    ws_emp.column_dimensions['D'].width = 12
     for i, _ in enumerate(all_projects):
-         ws_emp.column_dimensions[get_column_letter(2+i)].width = 15 # Project columns
+         ws_emp.column_dimensions[get_column_letter(5+i)].width = 15 # Project columns start at 5
 
 
     # Save to buffer
