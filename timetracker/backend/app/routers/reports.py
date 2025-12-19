@@ -298,7 +298,6 @@ async def export_monthly_excel(
         # Project Info for Daily View
         if log.project:
             proj_str = f"{log.project.code} {log.project.name}"
-            # Keep existing if multiple, or overwrite? Overwrite for now as per layout.
             user_data[key]["projects"][day] = proj_str
 
         # Meals
@@ -374,7 +373,7 @@ async def export_monthly_excel(
         except ValueError:
              day_styles[day] = None
 
-    # Base Columns (Fixed): Lp, Name, Rate, Buffer (4 cols)
+    # Base Columns (Fixed): Lp, Name, Days, Rate (4 cols)
     # Day Columns: 31 days * 3 cols = 93 cols
     # End columns: 4 cols
     
@@ -389,8 +388,7 @@ async def export_monthly_excel(
     c.border = medium_border
     c.alignment = left_align
 
-    ws.merge_cells(start_row=1, start_column=3, end_row=2, end_column=3)
-    ws.merge_cells(start_row=1, start_column=3, end_row=2, end_column=3)
+    ws.merge_cells(start_row=1, start_column=3, end_row=2, end_column=3) # Liczba dni
     c = ws.cell(row=1, column=3, value="Liczba dni")
     c.border = medium_border
     c.alignment = center_align
@@ -399,38 +397,43 @@ async def export_monthly_excel(
     c = ws.cell(row=1, column=4, value="Stawka")
     c.border = medium_border
 
-    # Days Headers: 2 Columns Per Day
+    # Days Headers: 3 Columns Per Day
     for day in range(1, 32):
-        start_col = 5 + (day - 1) * 2  # E is 5. 2 cols per day.
-        # Merge 2 cells for the day number
-        ws.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=start_col + 1)
+        start_col = 5 + (day - 1) * 3  # E is 5. 3 cols per day.
+        # Merge 3 cells for the day number
+        ws.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=start_col + 2)
         c = ws.cell(row=1, column=start_col, value=day)
         c.border = medium_border
         c.alignment = center_align
         
         # Apply style to the day header
         if day_styles.get(day):
-            for i in range(2):
+            for i in range(3):
                 cell = ws.cell(row=1, column=start_col + i)
                 cell.fill = day_styles[day]
                 cell.border = medium_border
 
-        # Sub-headers in Row 2: "G,P,N" | Empty
-        # Col 1
-        c = ws.cell(row=2, column=start_col, value="G,P,N")
+        # Sub-headers in Row 2: "G", "N", "P" (Matching photo order: Hours, Acc, Meals)
+        # Col 1: G (Hours)
+        c = ws.cell(row=2, column=start_col, value="G")
         c.border = medium_border
         c.alignment = center_align
         if day_styles.get(day): c.fill = day_styles[day]
         
-        # Col 2
-        c = ws.cell(row=2, column=start_col + 1, value="")
+        # Col 2: N (Accom)
+        c = ws.cell(row=2, column=start_col + 1, value="N")
+        c.border = medium_border
+        c.alignment = center_align
+        if day_styles.get(day): c.fill = day_styles[day]
+        
+        # Col 3: P (Meals)
+        c = ws.cell(row=2, column=start_col + 2, value="P")
         c.border = medium_border
         c.alignment = center_align
         if day_styles.get(day): c.fill = day_styles[day]
 
-    # Summary Headers (After day 31 * 2 cols)
-    # Start: 5. Width: 31*2 = 62. End: 5+62=67 (CO)
-    summary_start_col = 5 + (31 * 2)
+    # Summary Headers
+    summary_start_col = 5 + (31 * 3)
     
     # ILOŚĆ GODZIN
     c = ws.cell(row=1, column=summary_start_col, value="ILOŚĆ GODZIN")
@@ -439,14 +442,14 @@ async def export_monthly_excel(
     ws.column_dimensions[get_column_letter(summary_start_col)].width = 10
     ws.merge_cells(start_row=1, start_column=summary_start_col, end_row=2, end_column=summary_start_col)
     
-    # Razem Posiłki
-    c = ws.cell(row=1, column=summary_start_col + 1, value="Posiłki")
+    # Razem Noclegi
+    c = ws.cell(row=1, column=summary_start_col + 1, value="Noclegi")
     c.border = medium_border
     c.alignment = center_align
     ws.merge_cells(start_row=1, start_column=summary_start_col + 1, end_row=2, end_column=summary_start_col + 1)
 
-    # Razem Noclegi
-    c = ws.cell(row=1, column=summary_start_col + 2, value="Noclegi")
+    # Razem Posiłki
+    c = ws.cell(row=1, column=summary_start_col + 2, value="Posiłki")
     c.border = medium_border
     c.alignment = center_align
     ws.merge_cells(start_row=1, start_column=summary_start_col + 2, end_row=2, end_column=summary_start_col + 2)
@@ -458,7 +461,7 @@ async def export_monthly_excel(
     ws.column_dimensions[get_column_letter(summary_start_col + 3)].width = 12
     ws.merge_cells(start_row=1, start_column=summary_start_col + 3, end_row=2, end_column=summary_start_col + 3)
     
-    # Payroll Headers - Append after Summary
+    # Payroll Headers
     payroll_headers = [
         "premia (DODATEK GOTÓWKĄ DO WYPŁATY)", "PREMIA PRZELEW", "PŁACA NA KONTO", 
         "Komornik", "PPK", "ubezp. Pak. Med.sport.", 
@@ -470,7 +473,6 @@ async def export_monthly_excel(
         col_idx = payroll_start_col + i
         c = ws.cell(row=1, column=col_idx, value=header)
         c.border = medium_border
-        # Wrap text for long headers
         c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         ws.merge_cells(start_row=1, start_column=col_idx, end_row=2, end_column=col_idx)
 
@@ -479,18 +481,16 @@ async def export_monthly_excel(
         (x["name"] or "")
     ))
     
-
-
     current_row = 3
     for idx, item in enumerate(users_sorted):
         is_gray = (idx % 2 == 1)
         base_fill = fill_gray if is_gray else None
         
-        # Merge columns A, B, C, D vertically for the 3 rows
+        # Merge columns A, B, C, D vertically for the 2 rows
         for col_idx in range(1, 5):
-            ws.merge_cells(start_row=current_row, start_column=col_idx, end_row=current_row + 2, end_column=col_idx)
-            # Apply border to merged range
-            for r in range(current_row, current_row + 3):
+            ws.merge_cells(start_row=current_row, start_column=col_idx, end_row=current_row + 1, end_column=col_idx)
+            # Apply border and fill
+            for r in range(current_row, current_row + 2):
                 c = ws.cell(row=r, column=col_idx)
                 c.border = medium_border
                 c.alignment = center_align if col_idx != 2 else left_align
@@ -502,124 +502,96 @@ async def export_monthly_excel(
         # B: Name
         c = ws.cell(row=current_row, column=2, value=item["name"])
 
-        # C: Working Days (Total in month)
+        # C: Working Days
         c = ws.cell(row=current_row, column=3, value=total_working_days)
 
         # D: Rate
         c = ws.cell(row=current_row, column=4, value=item["rate"])
 
-        # Data Rows
-        # Row 1: Work (Hours | Project)
-        # Row 2: Meals (Count | Company)
-        # Row 3: Acc (Count | Company)
+        # Data Rows (2 Rows per User)
         
         for day in range(1, 32):
-            start_col = 5 + (day - 1) * 2
-            
-            # Determine fill for this day: Priority: Weekend/Holiday -> Gray -> None
+            start_col = 5 + (day - 1) * 3
             day_fill = day_styles.get(day) or base_fill
             
-            # --- ROW 1 (Work) ---
-            # Col 1: Hours
-            val = item["days"].get(day, 0)
-            c = ws.cell(row=current_row, column=start_col, value=val)
+            # --- ROW 1: Project ---
+            proj_val = item["projects"].get(day, None) or ""
+            ws.merge_cells(start_row=current_row, start_column=start_col, end_row=current_row, end_column=start_col + 2)
+            c = ws.cell(row=current_row, column=start_col, value=proj_val)
+            c.border = medium_border
+            c.alignment = center_align
+            # Apply style to merged range
+            for i in range(3):
+                cell_p = ws.cell(row=current_row, column=start_col + i)
+                cell_p.border = medium_border
+                if day_fill: cell_p.fill = day_fill
+
+            # --- ROW 2: Data ---
+            # Col 1: Hours (G)
+            val_h = item["days"].get(day, 0)
+            c = ws.cell(row=current_row + 1, column=start_col, value=val_h)
             c.border = medium_border
             c.alignment = center_align
             if day_fill: c.fill = day_fill
             
-            # Col 2: Project
-            val_proj = item["projects"].get(day, None)
-            c = ws.cell(row=current_row, column=start_col + 1, value=val_proj)
-            c.border = medium_border
-            c.alignment = center_align
-            if day_fill: c.fill = day_fill
-
-            # --- ROW 2 (Meals) ---
-            # Col 1: Count
-            val_mc = item["meals_count"].get(day, 0)
-            c = ws.cell(row=current_row + 1, column=start_col, value=val_mc)
+            # Col 2: Acc (N)
+            val_ac = item["acc_info"].get(day, None)
+            c = ws.cell(row=current_row + 1, column=start_col + 1, value=val_ac)
             c.border = medium_border
             c.alignment = center_align
             if day_fill: c.fill = day_fill
             
-            # Col 2: Company
-            val_mn = item["meals_info"].get(day, None)
-            c = ws.cell(row=current_row + 1, column=start_col + 1, value=val_mn)
-            c.border = medium_border
-            c.alignment = center_align
-            if day_fill: c.fill = day_fill
-
-            # --- ROW 3 (Accom) ---
-            # Col 1: Count
-            val_ac = item["acc_count"].get(day, 0)
-            c = ws.cell(row=current_row + 2, column=start_col, value=val_ac)
-            c.border = medium_border
-            c.alignment = center_align
-            if day_fill: c.fill = day_fill
-            
-            # Col 2: Company
-            val_an = item["acc_info"].get(day, None)
-            c = ws.cell(row=current_row + 2, column=start_col + 1, value=val_an)
+            # Col 3: Meals (P)
+            val_mc = item["meals_info"].get(day, None)
+            c = ws.cell(row=current_row + 1, column=start_col + 2, value=val_mc)
             c.border = medium_border
             c.alignment = center_align
             if day_fill: c.fill = day_fill
 
 
-        # Summary Columns
+        # Summary Columns (Merged 2 rows)
         last_day_col_letter = get_column_letter(summary_start_col - 1)
         
-        # Merge Summary and Payroll headers for the 3 rows as well?
-        # Usually summary is single cell. Merge them vertically.
         for i in range(4): # 4 summary columns
             col_idx = summary_start_col + i
-            ws.merge_cells(start_row=current_row, start_column=col_idx, end_row=current_row + 2, end_column=col_idx)
-            for r in range(current_row, current_row + 3):
+            ws.merge_cells(start_row=current_row, start_column=col_idx, end_row=current_row + 1, end_column=col_idx)
+            for r in range(current_row, current_row + 2):
                 c = ws.cell(row=r, column=col_idx)
                 c.border = medium_border
                 c.alignment = center_align
                 if base_fill: c.fill = base_fill
 
-        # Formula Range: Covers all day columns (Value & Description)
-        # We need to sum only every other column (Value columns: E, G, I...)
-        # Value columns are offsets 0, 2, 4 from E (5).
-        # MOD(COLUMN - 5, 2) == 0
+        # Formulas
+        row_range_data = f"$E{current_row + 1}:${last_day_col_letter}{current_row + 1}"
         
-        row_range_1 = f"$E{current_row}:${last_day_col_letter}{current_row}" # Row 1 range
-        row_range_2 = f"$E{current_row + 1}:${last_day_col_letter}{current_row + 1}" # Row 2 range
-        row_range_3 = f"$E{current_row + 2}:${last_day_col_letter}{current_row + 2}" # Row 3 range
-
-        # ILOŚĆ GODZIN (Row 1 sum of value cols)
-        # ISNUMBER checks if it's a number (ignores project strings in adjacent cols if range was contiguous, 
-        # but here we use MOD to be safe and target only Value columns).
-        formula_h = f'=SUMPRODUCT((MOD(COLUMN({row_range_1})-COLUMN($E$2),2)=0)*ISNUMBER({row_range_1}), {row_range_1})'
+        # ILOŚĆ GODZIN (Offset 0)
+        formula_h = f'=SUMPRODUCT((MOD(COLUMN({row_range_data})-COLUMN($E$2),3)=0)*ISNUMBER({row_range_data}), {row_range_data})'
         c = ws.cell(row=current_row, column=summary_start_col, value=formula_h)
 
-        # Total Meals (Row 2 sum of value cols: Counts)
-        formula_p = f'=SUMPRODUCT((MOD(COLUMN({row_range_2})-COLUMN($E$2),2)=0)*ISNUMBER({row_range_2}), {row_range_2})'
-        c = ws.cell(row=current_row, column=summary_start_col + 1, value=formula_p)
+        # Noclegi (Acc) - Offset 1
+        formula_n = f'=SUMPRODUCT((MOD(COLUMN({row_range_data})-COLUMN($E$2),3)=1)*(LEN({row_range_data})>0))'
+        c = ws.cell(row=current_row, column=summary_start_col + 1, value=formula_n)
 
-        # Total Accommodation (Row 3 sum of value cols: Counts)
-        formula_n = f'=SUMPRODUCT((MOD(COLUMN({row_range_3})-COLUMN($E$2),2)=0)*ISNUMBER({row_range_3}), {row_range_3})'
-        c = ws.cell(row=current_row, column=summary_start_col + 2, value=formula_n)
+        # Posiłki (Meals) - Offset 2
+        formula_p = f'=SUMPRODUCT((MOD(COLUMN({row_range_data})-COLUMN($E$2),3)=2)*(LEN({row_range_data})>0))'
+        c = ws.cell(row=current_row, column=summary_start_col + 2, value=formula_p)
         
         # NALEŻNOŚĆ
-        # =TotalHours * Rate (D)
         total_hours_col_letter = get_column_letter(summary_start_col)
-        # Rate is in D{current_row} (merged)
         formula_pay = f'={total_hours_col_letter}{current_row}*D{current_row}'
         c = ws.cell(row=current_row, column=summary_start_col + 3, value=formula_pay)
 
-        # Payroll Columns (Empty cells with borders)
+        # Payroll Columns
         payroll_start_col = summary_start_col + 4
         for i in range(len(payroll_headers)):
              col_idx = payroll_start_col + i
-             ws.merge_cells(start_row=current_row, start_column=col_idx, end_row=current_row + 2, end_column=col_idx)
-             for r in range(current_row, current_row + 3):
+             ws.merge_cells(start_row=current_row, start_column=col_idx, end_row=current_row + 1, end_column=col_idx)
+             for r in range(current_row, current_row + 2):
                  c = ws.cell(row=r, column=col_idx)
                  c.border = medium_border
                  if base_fill: c.fill = base_fill
 
-        current_row += 3
+        current_row += 2
 
     # Auto-fit columns for Main Sheet
     for column_cells in ws.columns:
@@ -702,42 +674,34 @@ async def export_monthly_excel(
         c.font = Font(bold=True)
     row_idx += 1
     
-    # Calculate global total hours for percentages
     total_hours_global = sum(d["hours"] for d in proj_global_summary.values())
 
     for proj_name, data in proj_global_summary.items():
-        # Project Name
         c = ws_summary.cell(row=row_idx, column=2, value=proj_name)
         set_border(c)
         
-        # Hours
         hours_sum = data["hours"]
         c = ws_summary.cell(row=row_idx, column=3, value=hours_sum)
         set_border(c)
 
-        # Hours %
         pct_hours = (hours_sum / total_hours_global) if total_hours_global > 0 else 0
         c = ws_summary.cell(row=row_idx, column=4, value=pct_hours)
         c.number_format = '0.00%'
         set_border(c)
 
-        # Meals
         meals_count = data["meals"]
         c = ws_summary.cell(row=row_idx, column=5, value=meals_count)
         set_border(c)
         
-        # Meals %
         pct_meals = (meals_count / total_meals) if total_meals > 0 else 0
         c = ws_summary.cell(row=row_idx, column=6, value=pct_meals)
         c.number_format = '0.00%'
         set_border(c)
         
-        # Acc
         acc_count = data["acc"]
         c = ws_summary.cell(row=row_idx, column=7, value=acc_count)
         set_border(c)
         
-        # Acc %
         pct_acc = (acc_count / total_acc) if total_acc > 0 else 0
         c = ws_summary.cell(row=row_idx, column=8, value=pct_acc)
         c.number_format = '0.00%'
@@ -745,7 +709,6 @@ async def export_monthly_excel(
         
         row_idx += 1
 
-    # Auto-fit columns for Summary Sheet
     for column_cells in ws_summary.columns:
         length = max(len(str(cell.value) or "") for cell in column_cells)
         ws_summary.column_dimensions[get_column_letter(column_cells[0].column)].width = length + 2
@@ -754,28 +717,21 @@ async def export_monthly_excel(
     ws_emp = wb.create_sheet("Podsumowanie pracowników")
     
     row_idx = 1
-    
-    # Collect all project names for columns
-    # proj_global_summary keys are "CODE Name", which is what we want
     all_projects = sorted(proj_global_summary.keys())
     
     for item in users_sorted:
-        # Calculate stats
         days_worked = sum(1 for v in item["days"].values() if isinstance(v, (int, float)) and v > 0)
         absences = sum(1 for v in item["days"].values() if isinstance(v, str))
         total_user_hours = sum(p["hours"] for p in item["project_stats"].values())
         
-        # Row 1: Employee Header (Name only)
         c = ws_emp.cell(row=row_idx, column=1, value=item['name'])
         c.font = Font(bold=True)
         set_border(c)
         row_idx += 1
         
-        # Row 2: Header Labels + Fixed Stats Headers + Project Headers
         ws_emp.cell(row=row_idx, column=1, value="Kategoria")
         set_border(ws_emp.cell(row=row_idx, column=1))
         
-        # Fixed Headers
         ws_emp.cell(row=row_idx, column=2, value="Dni pracy")
         set_border(ws_emp.cell(row=row_idx, column=2))
         ws_emp.cell(row=row_idx, column=3, value="Nieobecności")
@@ -785,7 +741,6 @@ async def export_monthly_excel(
         ws_emp.cell(row=row_idx, column=5, value="% Godzin")
         set_border(ws_emp.cell(row=row_idx, column=5))
         
-        # Project Headers (Starting col 6)
         for i, proj in enumerate(all_projects):
             c = ws_emp.cell(row=row_idx, column=6+i, value=proj)
             set_border(c)
@@ -793,41 +748,36 @@ async def export_monthly_excel(
 
         row_idx += 1
         
-        # Row 3: Hours (With Stats Values)
         c = ws_emp.cell(row=row_idx, column=1, value="Godziny")
         set_border(c)
         
-        # Fixed Stats Values
-        c = ws_emp.cell(row=row_idx, column=2, value=f"{days_worked}/{total_working_days}") # Days
+        c = ws_emp.cell(row=row_idx, column=2, value=f"{days_worked}/{total_working_days}") 
         set_border(c)
-        c = ws_emp.cell(row=row_idx, column=3, value=absences) # Absences
+        c = ws_emp.cell(row=row_idx, column=3, value=absences) 
         set_border(c)
-        c = ws_emp.cell(row=row_idx, column=4, value=total_user_hours) # Total Hours
+        c = ws_emp.cell(row=row_idx, column=4, value=total_user_hours) 
         set_border(c)
         
-        # % Hours Share
         user_share = (total_user_hours / total_hours_global) if total_hours_global > 0 else 0
         c = ws_emp.cell(row=row_idx, column=5, value=user_share)
         c.number_format = '0.00%'
         set_border(c)
 
         for i, proj in enumerate(all_projects):
-            p_code = proj.split(" ")[0]
-            val = item["project_stats"].get(p_code, {}).get("hours", 0)
+            p_code_extracted = proj.split(" ")[0]
+            val = item["project_stats"].get(p_code_extracted, {}).get("hours", 0)
             c = ws_emp.cell(row=row_idx, column=6+i, value=val)
             set_border(c)
         row_idx += 1
         
-        # Row 3b: % Time (Share of User's Total Hours)
         c = ws_emp.cell(row=row_idx, column=1, value="% Czasu")
         set_border(c)
         
-        # Empty cells for fixed columns
         for k in range(2, 6): set_border(ws_emp.cell(row=row_idx, column=k))
         
         for i, proj in enumerate(all_projects):
-            p_code = proj.split(" ")[0]
-            val = item["project_stats"].get(p_code, {}).get("hours", 0)
+            p_code_extracted = proj.split(" ")[0]
+            val = item["project_stats"].get(p_code_extracted, {}).get("hours", 0)
             pct = (val / total_user_hours) if total_user_hours > 0 else 0
             
             c = ws_emp.cell(row=row_idx, column=6+i, value=pct)
@@ -835,48 +785,40 @@ async def export_monthly_excel(
             set_border(c)
         row_idx += 1
         
-        # Row 4: Meals (Skip Fixed Stats)
         c = ws_emp.cell(row=row_idx, column=1, value="Posiłki")
         set_border(c)
         
-        # Empty cells for fixed columns
         for k in range(2, 6): set_border(ws_emp.cell(row=row_idx, column=k))
         
         for i, proj in enumerate(all_projects):
-            p_code = proj.split(" ")[0]
-            val = item["project_stats"].get(p_code, {}).get("meals", 0)
+            p_code_extracted = proj.split(" ")[0]
+            val = item["project_stats"].get(p_code_extracted, {}).get("meals", 0)
             c = ws_emp.cell(row=row_idx, column=6+i, value=val)
             set_border(c)
         row_idx += 1
             
-        # Row 5: Acc (Skip Fixed Stats)
         c = ws_emp.cell(row=row_idx, column=1, value="Noclegi")
         set_border(c)
 
-        # Empty cells for fixed columns
         for k in range(2, 6): set_border(ws_emp.cell(row=row_idx, column=k))
 
         for i, proj in enumerate(all_projects):
-            p_code = proj.split(" ")[0]
-            val = item["project_stats"].get(p_code, {}).get("acc", 0)
+            p_code_extracted = proj.split(" ")[0]
+            val = item["project_stats"].get(p_code_extracted, {}).get("acc", 0)
             c = ws_emp.cell(row=row_idx, column=6+i, value=val)
             set_border(c)
         row_idx += 1
         
-        # Empty row between users
         row_idx += 1
 
-    # Auto-fit columns for Employee Summary
-    ws_emp.column_dimensions['A'].width = 30 # User name / labels column
+    ws_emp.column_dimensions['A'].width = 30 
     ws_emp.column_dimensions['B'].width = 12
     ws_emp.column_dimensions['C'].width = 15
     ws_emp.column_dimensions['D'].width = 12
     ws_emp.column_dimensions['E'].width = 10
     for i, _ in enumerate(all_projects):
-         ws_emp.column_dimensions[get_column_letter(6+i)].width = 15 # Project columns start at 6
+         ws_emp.column_dimensions[get_column_letter(6+i)].width = 15 
 
-
-    # Save to buffer
     stream = BytesIO()
     wb.save(stream)
     stream.seek(0)
@@ -888,7 +830,6 @@ async def export_monthly_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
-
 @router.get("/participants", response_model=list[str])
 async def get_project_participants(
     project_id: int,
