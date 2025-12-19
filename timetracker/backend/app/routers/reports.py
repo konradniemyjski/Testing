@@ -782,10 +782,12 @@ async def export_monthly_excel(
         set_border(ws_emp.cell(row=row_idx, column=3))
         ws_emp.cell(row=row_idx, column=4, value="Suma godzin")
         set_border(ws_emp.cell(row=row_idx, column=4))
+        ws_emp.cell(row=row_idx, column=5, value="% Godzin")
+        set_border(ws_emp.cell(row=row_idx, column=5))
         
-        # Project Headers (Starting col 5)
+        # Project Headers (Starting col 6)
         for i, proj in enumerate(all_projects):
-            c = ws_emp.cell(row=row_idx, column=5+i, value=proj)
+            c = ws_emp.cell(row=row_idx, column=6+i, value=proj)
             set_border(c)
             c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
@@ -802,11 +804,17 @@ async def export_monthly_excel(
         set_border(c)
         c = ws_emp.cell(row=row_idx, column=4, value=total_user_hours) # Total Hours
         set_border(c)
+        
+        # % Hours Share
+        user_share = (total_user_hours / total_hours_global) if total_hours_global > 0 else 0
+        c = ws_emp.cell(row=row_idx, column=5, value=user_share)
+        c.number_format = '0.00%'
+        set_border(c)
 
         for i, proj in enumerate(all_projects):
             p_code = proj.split(" ")[0]
             val = item["project_stats"].get(p_code, {}).get("hours", 0)
-            c = ws_emp.cell(row=row_idx, column=5+i, value=val)
+            c = ws_emp.cell(row=row_idx, column=6+i, value=val)
             set_border(c)
         row_idx += 1
         
@@ -815,12 +823,12 @@ async def export_monthly_excel(
         set_border(c)
         
         # Empty cells for fixed columns
-        for k in range(2, 5): set_border(ws_emp.cell(row=row_idx, column=k))
+        for k in range(2, 6): set_border(ws_emp.cell(row=row_idx, column=k))
         
         for i, proj in enumerate(all_projects):
             p_code = proj.split(" ")[0]
             val = item["project_stats"].get(p_code, {}).get("meals", 0)
-            c = ws_emp.cell(row=row_idx, column=5+i, value=val)
+            c = ws_emp.cell(row=row_idx, column=6+i, value=val)
             set_border(c)
         row_idx += 1
             
@@ -829,12 +837,12 @@ async def export_monthly_excel(
         set_border(c)
 
         # Empty cells for fixed columns
-        for k in range(2, 5): set_border(ws_emp.cell(row=row_idx, column=k))
+        for k in range(2, 6): set_border(ws_emp.cell(row=row_idx, column=k))
 
         for i, proj in enumerate(all_projects):
             p_code = proj.split(" ")[0]
             val = item["project_stats"].get(p_code, {}).get("acc", 0)
-            c = ws_emp.cell(row=row_idx, column=5+i, value=val)
+            c = ws_emp.cell(row=row_idx, column=6+i, value=val)
             set_border(c)
         row_idx += 1
         
@@ -846,8 +854,9 @@ async def export_monthly_excel(
     ws_emp.column_dimensions['B'].width = 12
     ws_emp.column_dimensions['C'].width = 15
     ws_emp.column_dimensions['D'].width = 12
+    ws_emp.column_dimensions['E'].width = 10
     for i, _ in enumerate(all_projects):
-         ws_emp.column_dimensions[get_column_letter(5+i)].width = 15 # Project columns start at 5
+         ws_emp.column_dimensions[get_column_letter(6+i)].width = 15 # Project columns start at 6
 
 
     # Save to buffer
