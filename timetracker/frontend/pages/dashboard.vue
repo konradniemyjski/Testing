@@ -28,7 +28,17 @@
 
             <div class="form-group">
               <label for="date">Data</label>
-              <input id="date" v-model="form.date" type="date" required />
+              <VueDatePicker 
+                id="date"
+                v-model="form.date"
+                :enable-time-picker="false"
+                locale="pl"
+                auto-apply
+                :week-start="1"
+                format="yyyy-MM-dd"
+                model-type="yyyy-MM-dd"
+                required 
+              />
             </div>
 
 
@@ -324,6 +334,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useDictionaryStore, type AccommodationCompany, type CateringCompany, type TeamMember } from '~/stores/dictionaries'
 import { useUserStore } from '~/stores/user'
+import VueDatePicker from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
 
 definePageMeta({ ssr: false })
 
