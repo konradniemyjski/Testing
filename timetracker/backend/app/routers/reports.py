@@ -635,7 +635,7 @@ async def export_monthly_excel(
         cell.alignment = center_align
 
     # 1. Catering Summary
-    # row_idx continues incrementing...
+    row_idx = 2
     ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE POSIŁKÓW").font = Font(bold=True)
     row_idx += 1
     
