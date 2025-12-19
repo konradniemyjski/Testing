@@ -466,11 +466,8 @@ async def export_monthly_excel(
             
             # --- ROW 1 (Work) ---
             # Col 1: Hours
-            if day in item["days"]:
-                val = item["days"][day]
-                c = ws.cell(row=current_row, column=start_col, value=val)
-            else:
-                c = ws.cell(row=current_row, column=start_col)
+            val = item["days"].get(day, 0)
+            c = ws.cell(row=current_row, column=start_col, value=val)
             c.border = medium_border
             c.alignment = center_align
             if day_styles.get(day): c.fill = day_styles[day]
@@ -484,9 +481,7 @@ async def export_monthly_excel(
 
             # --- ROW 2 (Meals) ---
             # Col 1: Count
-            val_mc = item["meals_count"].get(day, None)
-            if val_mc is None and day in item["days"]:
-                val_mc = 0
+            val_mc = item["meals_count"].get(day, 0)
             c = ws.cell(row=current_row + 1, column=start_col, value=val_mc)
             c.border = medium_border
             c.alignment = center_align
@@ -501,9 +496,7 @@ async def export_monthly_excel(
 
             # --- ROW 3 (Accom) ---
             # Col 1: Count
-            val_ac = item["acc_count"].get(day, None)
-            if val_ac is None and day in item["days"]:
-                val_ac = 0
+            val_ac = item["acc_count"].get(day, 0)
             c = ws.cell(row=current_row + 2, column=start_col, value=val_ac)
             c.border = medium_border
             c.alignment = center_align
