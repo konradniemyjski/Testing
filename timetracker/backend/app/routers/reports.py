@@ -750,6 +750,80 @@ async def export_monthly_excel(
         length = max(len(str(cell.value) or "") for cell in column_cells)
         ws_summary.column_dimensions[get_column_letter(column_cells[0].column)].width = length + 2
 
+    # --- EMPLOYEE SUMMARY SHEET ("Podsumowanie pracowników") ---
+    ws_emp = wb.create_sheet("Podsumowanie pracowników")
+    
+    row_idx = 1
+    
+    # Collect all project names for columns
+    # proj_global_summary keys are "CODE Name", which is what we want
+    all_projects = sorted(proj_global_summary.keys())
+    
+    for item in users_sorted:
+        # Calculate stats
+        days_worked = sum(1 for v in item["days"].values() if isinstance(v, (int, float)) and v > 0)
+        absences = sum(1 for v in item["days"].values() if isinstance(v, str))
+        total_user_hours = sum(p["hours"] for p in item["project_stats"].values())
+        
+        # Row 1: Employee Header
+        header_text = f"{item['name']} (Dni pracy: {days_worked}/{total_working_days}, Nieobecności: {absences}, Suma godzin: {total_user_hours})"
+        c = ws_emp.cell(row=row_idx, column=1, value=header_text)
+        c.font = Font(bold=True)
+        set_border(c)
+        row_idx += 1
+        
+        # Row 2: Header Labels + Project Headers
+        ws_emp.cell(row=row_idx, column=1, value="Kategoria")
+        set_border(ws_emp.cell(row=row_idx, column=1))
+        
+        for i, proj in enumerate(all_projects):
+            c = ws_emp.cell(row=row_idx, column=2+i, value=proj)
+            set_border(c)
+            # c.font = Font(bold=True) # Optional
+            c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+        row_idx += 1
+        
+        # Row 3: Hours
+        c = ws_emp.cell(row=row_idx, column=1, value="Godziny")
+        set_border(c)
+        for i, proj in enumerate(all_projects):
+            # Extract CODE from "CODE Name" key, as project_stats keys are just CODE
+            p_code = proj.split(" ")[0]
+            val = item["project_stats"].get(p_code, {}).get("hours", 0)
+            c = ws_emp.cell(row=row_idx, column=2+i, value=val)
+            set_border(c)
+        row_idx += 1
+        
+        # Row 4: Meals
+        c = ws_emp.cell(row=row_idx, column=1, value="Posiłki")
+        set_border(c)
+        for i, proj in enumerate(all_projects):
+            p_code = proj.split(" ")[0]
+            val = item["project_stats"].get(p_code, {}).get("meals", 0)
+            c = ws_emp.cell(row=row_idx, column=2+i, value=val)
+            set_border(c)
+        row_idx += 1
+            
+        # Row 5: Acc
+        c = ws_emp.cell(row=row_idx, column=1, value="Noclegi")
+        set_border(c)
+        for i, proj in enumerate(all_projects):
+            p_code = proj.split(" ")[0]
+            val = item["project_stats"].get(p_code, {}).get("acc", 0)
+            c = ws_emp.cell(row=row_idx, column=2+i, value=val)
+            set_border(c)
+        row_idx += 1
+        
+        # Empty row between users
+        row_idx += 1
+
+    # Auto-fit columns for Employee Summary
+    ws_emp.column_dimensions['A'].width = 30 # User name / labels column
+    for i, _ in enumerate(all_projects):
+         ws_emp.column_dimensions[get_column_letter(2+i)].width = 15 # Project columns
+
+
     # Save to buffer
     stream = BytesIO()
     wb.save(stream)
