@@ -613,8 +613,8 @@ async def export_monthly_excel(
     for day in range(1, 32):
         ws.column_dimensions[get_column_letter(5 + day)].width = 5
 
-    # --- SUMMARY SHEET ("Podsumowanie") ---
-    ws_summary = wb.create_sheet("Podsumowanie")
+    # --- SUMMARY SHEET ("Podsumowanie dostawców") ---
+    ws_summary = wb.create_sheet("Podsumowanie dostawców")
     
     # helper for borders
     def set_border(cell):
