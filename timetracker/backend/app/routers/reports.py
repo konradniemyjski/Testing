@@ -232,7 +232,7 @@ async def export_monthly_excel(
     # Global Aggregators for Summary Sheet
     acc_global_summary = {} # Name -> count
     cat_global_summary = {} # Name -> count
-    proj_global_summary = {} # Project Name -> {"meals": 0, "acc": 0}
+    proj_global_summary = {} # Project Name -> {"meals": 0, "acc": 0, "hours": 0.0}
     
     for log in worklogs:
         if log.team_member_id:
@@ -275,7 +275,9 @@ async def export_monthly_excel(
             
             # Init global project summary if new
             if full_proj_name not in proj_global_summary:
-                proj_global_summary[full_proj_name] = {"meals": 0, "acc": 0}
+                proj_global_summary[full_proj_name] = {"meals": 0, "acc": 0, "hours": 0.0}
+            
+            proj_global_summary[full_proj_name]["hours"] += log.hours_worked
 
             # Init user project stats if new
             if proj_code not in user_data[key]["project_stats"]:
@@ -693,13 +695,16 @@ async def export_monthly_excel(
     ws_summary.cell(row=row_idx, column=2, value="PODSUMOWANIE PROJEKTÓW").font = Font(bold=True)
     row_idx += 1
     
-    headers = ["Projekt", "Posiłki", "% Posiłków", "Noclegi", "% Noclegów"]
+    headers = ["Projekt", "Posiłki", "% Posiłków", "Noclegi", "% Noclegów", "Godziny", "% Godzin"]
     for i, h in enumerate(headers):
         c = ws_summary.cell(row=row_idx, column=2+i, value=h)
         set_border(c)
         c.font = Font(bold=True)
     row_idx += 1
     
+    # Calculate global total hours for percentages
+    total_hours_global = sum(d["hours"] for d in proj_global_summary.values())
+
     for proj_name, data in proj_global_summary.items():
         # Project Name
         c = ws_summary.cell(row=row_idx, column=2, value=proj_name)
@@ -724,6 +729,17 @@ async def export_monthly_excel(
         # Acc %
         pct_acc = (acc_count / total_acc) if total_acc > 0 else 0
         c = ws_summary.cell(row=row_idx, column=6, value=pct_acc)
+        c.number_format = '0.00%'
+        set_border(c)
+
+        # Hours
+        hours_sum = data["hours"]
+        c = ws_summary.cell(row=row_idx, column=7, value=hours_sum)
+        set_border(c)
+
+        # Hours %
+        pct_hours = (hours_sum / total_hours_global) if total_hours_global > 0 else 0
+        c = ws_summary.cell(row=row_idx, column=8, value=pct_hours)
         c.number_format = '0.00%'
         set_border(c)
         
