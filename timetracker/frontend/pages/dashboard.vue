@@ -31,19 +31,7 @@
               <input id="date" v-model="form.date" type="date" required />
             </div>
 
-            <div class="form-group">
-              <label for="siteCode">Kod budowy</label>
-              <select 
-                id="siteCode" 
-                v-model="form.site_code" 
-                required
-              >
-                <option value="" disabled>Wybierz kod</option>
-                <option v-for="p in projects" :key="p.id" :value="p.code">
-                  {{ p.code }}
-                </option>
-              </select>
-            </div>
+
 
             <div class="form-group" v-if="!isUser">
               <label for="teamSelect">Zespół</label>
@@ -95,7 +83,7 @@
                       {{ entry.isPresent ? 'Obecny' : 'Nieobecny' }}
                     </label>
                     <button 
-                      v-if="entry.isManual && !isUser" 
+                      v-if="!isUser" 
                       type="button" 
                       @click="removeEntry(index)"
                       class="delete-entry-btn"
@@ -563,15 +551,7 @@ watch(
   }
 )
 
-watch(
-  () => form.site_code,
-  (newCode) => {
-    const project = projects.value.find(p => p.code === newCode)
-    if (project && project.id !== form.project_id) {
-      form.project_id = project.id
-    }
-  }
-)
+
 
 watch(
   teams,
