@@ -32,7 +32,7 @@
                 id="date"
                 v-model="form.date"
                 :enable-time-picker="false"
-                locale="pl"
+                :locale="pl"
                 auto-apply
                 :week-start="1"
                 format="yyyy-MM-dd"
@@ -334,8 +334,9 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useDictionaryStore, type AccommodationCompany, type CateringCompany, type TeamMember } from '~/stores/dictionaries'
 import { useUserStore } from '~/stores/user'
-import VueDatePicker from '@vuepic/vue-datepicker'
+import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+import { pl } from 'date-fns/locale'
 
 definePageMeta({ ssr: false })
 
