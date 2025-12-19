@@ -437,20 +437,20 @@ async def export_monthly_excel(
         row_range = f"$E{current_row}:${last_day_col_letter}{current_row}"
         
         # Total Hours
-        # =SUMIF($E$2:$CL$2, "G", $E3:$CL3)
-        formula_h = f'=SUMIF({sum_range_str}, "G", {row_range})'
+        # =SUMPRODUCT((MOD(COLUMN($E3:$CL3)-COLUMN($E$2),3)=0)*ISNUMBER($E3:$CL3), $E3:$CL3)
+        formula_h = f'=SUMPRODUCT((MOD(COLUMN({row_range})-COLUMN($E$2),3)=0)*ISNUMBER({row_range}), {row_range})'
         c = ws.cell(row=current_row, column=summary_start_col, value=formula_h)
         c.border = medium_border
         c.alignment = center_align
         
         # Total Meals
-        formula_p = f'=SUMIF({sum_range_str}, "P", {row_range})'
+        formula_p = f'=SUMPRODUCT((MOD(COLUMN({row_range})-COLUMN($E$2),3)=1)*ISNUMBER({row_range}), {row_range})'
         c = ws.cell(row=current_row, column=summary_start_col + 1, value=formula_p)
         c.border = medium_border
         c.alignment = center_align
 
         # Total Accommodation
-        formula_n = f'=SUMIF({sum_range_str}, "N", {row_range})'
+        formula_n = f'=SUMPRODUCT((MOD(COLUMN({row_range})-COLUMN($E$2),3)=2)*ISNUMBER({row_range}), {row_range})'
         c = ws.cell(row=current_row, column=summary_start_col + 2, value=formula_n)
         c.border = medium_border
         c.alignment = center_align
